@@ -127,6 +127,9 @@ dependencies {
 
     compile 'com.google.guava:guava:23.0'
 
+    compile 'org.apache.felix:org.apache.felix.framework:5.6.10'
+    compile 'org.apache.felix:org.apache.felix.http.jetty:5.6.10'
+
     api 'org.jacoco:org.jacoco.agent:0.7.7.201606060606'
 
     testCompile 'org.hamcrest:hamcrest-all:1.3'
