@@ -30,7 +30,6 @@ import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.converter.builders.TestItemBuilder;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import com.epam.ta.reportportal.ws.model.item.ItemCreatedRS;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -56,8 +55,6 @@ class StartTestItemHandlerImpl implements StartTestItemHandler {
 
 	private UniqueIdGenerator identifierGenerator;
 
-	private RabbitTemplate rabbitTemplate;
-
 	@Autowired
 	public void setTestItemRepository(TestItemRepository testItemRepository) {
 		this.testItemRepository = testItemRepository;
@@ -76,11 +73,6 @@ class StartTestItemHandlerImpl implements StartTestItemHandler {
 	@Autowired
 	public void setIdentifierGenerator(UniqueIdGenerator identifierGenerator) {
 		this.identifierGenerator = identifierGenerator;
-	}
-
-	@Autowired
-	public void setRabbitTemplate(RabbitTemplate rabbitTemplate) {
-		this.rabbitTemplate = rabbitTemplate;
 	}
 
 	@Override

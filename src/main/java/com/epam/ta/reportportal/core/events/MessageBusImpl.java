@@ -2,7 +2,9 @@ package com.epam.ta.reportportal.core.events;
 
 import com.epam.ta.reportportal.core.configs.RabbitMqConfiguration;
 import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.stereotype.Component;
 
+@Component
 public class MessageBusImpl implements MessageBus {
 
 	private final AmqpTemplate amqpTemplate;

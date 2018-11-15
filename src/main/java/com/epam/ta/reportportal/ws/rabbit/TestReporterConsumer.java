@@ -21,6 +21,7 @@ import com.epam.ta.reportportal.auth.basic.DatabaseUserDetailsService;
 import com.epam.ta.reportportal.core.item.FinishTestItemHandler;
 import com.epam.ta.reportportal.core.item.StartTestItemHandler;
 import com.epam.ta.reportportal.util.ProjectExtractor;
+import com.epam.ta.reportportal.ws.handler.StartTestItemAsyncHandler;
 import com.epam.ta.reportportal.ws.model.FinishTestItemRQ;
 import com.epam.ta.reportportal.ws.model.StartTestItemRQ;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.epam.ta.reportportal.commons.EntityUtils.normalizeId;
+import static com.epam.ta.reportportal.core.configs.RabbitMqConfiguration.QUEUE_START_ITEM;
 
 /**
  * @author Pavel Bortnik
@@ -39,37 +41,36 @@ import static com.epam.ta.reportportal.commons.EntityUtils.normalizeId;
 @Transactional
 public class TestReporterConsumer {
 
-	private DatabaseUserDetailsService userDetailsService;
+    private DatabaseUserDetailsService userDetailsService;
 
-	private StartTestItemHandler startTestItemHandler;
+    private StartTestItemAsyncHandler startTestItemHandler;
 
-	private FinishTestItemHandler finishTestItemHandler;
+    private FinishTestItemHandler finishTestItemHandler;
 
-	@Autowired
-	public TestReporterConsumer(DatabaseUserDetailsService userDetailsService, StartTestItemHandler startTestItemHandler,
-			FinishTestItemHandler finishTestItemHandler) {
-		this.userDetailsService = userDetailsService;
-		this.startTestItemHandler = startTestItemHandler;
-		this.finishTestItemHandler = finishTestItemHandler;
-	}
+    @Autowired
+    public TestReporterConsumer(DatabaseUserDetailsService userDetailsService, StartTestItemAsyncHandler startTestItemHandler,
+                                FinishTestItemHandler finishTestItemHandler) {
+        this.userDetailsService = userDetailsService;
+        this.startTestItemHandler = startTestItemHandler;
+        this.finishTestItemHandler = finishTestItemHandler;
+    }
 
-	@RabbitListener(queues = "#{ @startItemQueue.name }")
-	public void onStartItem(@Header(MessageHeaders.USERNAME) String username, @Header(MessageHeaders.PROJECT_NAME) String projectName,
-			@Header(name = MessageHeaders.PARENT_ID, required = false) Long parentId, @Payload StartTestItemRQ rq) {
-		ReportPortalUser user = (ReportPortalUser) userDetailsService.loadUserByUsername(username);
-		ReportPortalUser.ProjectDetails projectDetails = ProjectExtractor.extractProjectDetails(user, normalizeId(projectName));
-		if (null != parentId && parentId > 0) {
-			startTestItemHandler.startChildItem(user, projectDetails, rq, parentId);
-		} else {
-			startTestItemHandler.startRootItem(user, projectDetails, rq);
-		}
-	}
+    @RabbitListener(queues = QUEUE_START_ITEM)
+    public void onStartItem(@Header(name = MessageHeaders.PARENT_ID, required = false) Long parentId,
+                            @Header(MessageHeaders.ITEM_ID) Long itemId,
+                            @Payload StartTestItemRQ rq) {
+        if (parentId == null) {
+            startTestItemHandler.startRootItem(rq, itemId);
+        } else {
+            startTestItemHandler.startChildItem(rq, itemId, parentId);
+        }
+    }
 
-	@RabbitListener(queues = "#{ @finishItemQueue.name }")
-	public void onFinishItem(@Header(MessageHeaders.USERNAME) String username, @Header(MessageHeaders.PROJECT_NAME) String projectName,
-			@Header(MessageHeaders.ITEM_ID) Long itemId, @Payload FinishTestItemRQ rq) {
-		ReportPortalUser user = (ReportPortalUser) userDetailsService.loadUserByUsername(username);
-		finishTestItemHandler.finishTestItem(user, ProjectExtractor.extractProjectDetails(user, normalizeId(projectName)), itemId, rq);
-	}
+    @RabbitListener(queues = "#{ @finishItemQueue.name }")
+    public void onFinishItem(@Header(MessageHeaders.USERNAME) String username, @Header(MessageHeaders.PROJECT_NAME) String projectName,
+                             @Header(MessageHeaders.ITEM_ID) Long itemId, @Payload FinishTestItemRQ rq) {
+        ReportPortalUser user = (ReportPortalUser) userDetailsService.loadUserByUsername(username);
+        finishTestItemHandler.finishTestItem(user, ProjectExtractor.extractProjectDetails(user, normalizeId(projectName)), itemId, rq);
+    }
 
 }
