@@ -17,6 +17,7 @@
 package com.epam.ta.reportportal.ws.controller;
 
 import com.epam.ta.reportportal.auth.ReportPortalUser;
+import com.epam.ta.reportportal.core.dashboard.DeleteDashboardHandler;
 import com.epam.ta.reportportal.core.dashboard.ICreateDashboardHandler;
 import com.epam.ta.reportportal.core.dashboard.IGetDashboardHandler;
 import com.epam.ta.reportportal.core.dashboard.IUpdateDashboardHandler;
@@ -58,13 +59,15 @@ public class DashboardController {
 	private final ICreateDashboardHandler createDashboardHandler;
 	private final IUpdateDashboardHandler updateDashboardHandler;
 	private final IGetDashboardHandler getDashboardHandler;
+	private final DeleteDashboardHandler deleteDashboardHandler;
 
 	@Autowired
 	public DashboardController(ICreateDashboardHandler createDashboardHandler, IUpdateDashboardHandler updateDashboardHandler,
-			IGetDashboardHandler getDashboardHandler) {
+			IGetDashboardHandler getDashboardHandler, DeleteDashboardHandler deleteDashboardHandler) {
 		this.createDashboardHandler = createDashboardHandler;
 		this.updateDashboardHandler = updateDashboardHandler;
 		this.getDashboardHandler = getDashboardHandler;
+		this.deleteDashboardHandler = deleteDashboardHandler;
 	}
 
 	@Transactional
@@ -74,6 +77,15 @@ public class DashboardController {
 	public EntryCreatedRS createDashboard(@PathVariable String projectName, @RequestBody @Validated CreateDashboardRQ createRQ,
 			@AuthenticationPrincipal ReportPortalUser user) {
 		return createDashboardHandler.createDashboard(extractProjectDetails(user, projectName), createRQ, user);
+	}
+
+	@Transactional
+	@DeleteMapping(value = "/{dashboardId}")
+	@ResponseStatus(OK)
+	@ApiOperation("Remove dashboard for specified project")
+	public OperationCompletionRS deleteDashboard(@PathVariable String projectName, @PathVariable Long dashboardId,
+			@AuthenticationPrincipal ReportPortalUser user) {
+		return deleteDashboardHandler.deleteDashboard(dashboardId, extractProjectDetails(user, projectName), user);
 	}
 
 	@Transactional(readOnly = true)
