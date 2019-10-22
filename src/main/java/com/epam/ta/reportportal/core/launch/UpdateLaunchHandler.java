@@ -51,10 +51,10 @@ public interface UpdateLaunchHandler {
 	 *
 	 * @param projectDetails  Project Details
 	 * @param analyzeLaunchRQ Launch analyze rq
-	 * @param user            Report portal user
+	 * @param user            User started analysis
 	 * @return OperationCompletionRS - Response Data
 	 */
-	OperationCompletionRS startLaunchAnalyzer(ReportPortalUser.ProjectDetails projectDetails, AnalyzeLaunchRQ analyzeLaunchRQ,
+	OperationCompletionRS startLaunchAnalyzer(AnalyzeLaunchRQ analyzeLaunchRQ, ReportPortalUser.ProjectDetails projectDetails,
 			ReportPortalUser user);
 
 	/**

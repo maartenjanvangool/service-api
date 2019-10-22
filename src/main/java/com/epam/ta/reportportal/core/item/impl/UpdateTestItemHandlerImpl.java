@@ -19,8 +19,8 @@ package com.epam.ta.reportportal.core.item.impl;
 import com.epam.ta.reportportal.commons.ReportPortalUser;
 import com.epam.ta.reportportal.commons.validation.BusinessRuleViolationException;
 import com.epam.ta.reportportal.commons.validation.Suppliers;
-import com.epam.ta.reportportal.core.analyzer.LogIndexer;
-import com.epam.ta.reportportal.core.analyzer.impl.AnalyzerUtils;
+import com.epam.ta.reportportal.core.analyzer.auto.LogIndexer;
+import com.epam.ta.reportportal.core.analyzer.auto.impl.AnalyzerUtils;
 import com.epam.ta.reportportal.core.events.MessageBus;
 import com.epam.ta.reportportal.core.events.activity.ItemIssueTypeDefinedEvent;
 import com.epam.ta.reportportal.core.events.activity.LinkTicketEvent;
@@ -28,6 +28,7 @@ import com.epam.ta.reportportal.core.item.UpdateTestItemHandler;
 import com.epam.ta.reportportal.core.item.impl.status.StatusChangingStrategy;
 import com.epam.ta.reportportal.dao.*;
 import com.epam.ta.reportportal.entity.ItemAttribute;
+import com.epam.ta.reportportal.entity.activity.ActivityAction;
 import com.epam.ta.reportportal.entity.bts.Ticket;
 import com.epam.ta.reportportal.entity.enums.StatusEnum;
 import com.epam.ta.reportportal.entity.enums.TestItemIssueGroup;
@@ -53,16 +54,20 @@ import com.epam.ta.reportportal.ws.model.activity.TestItemActivityResource;
 import com.epam.ta.reportportal.ws.model.issue.DefineIssueRQ;
 import com.epam.ta.reportportal.ws.model.issue.Issue;
 import com.epam.ta.reportportal.ws.model.issue.IssueDefinition;
+import com.epam.ta.reportportal.ws.model.item.ExternalIssueRQ;
 import com.epam.ta.reportportal.ws.model.item.LinkExternalIssueRQ;
-import com.epam.ta.reportportal.ws.model.item.UnlinkExternalIssueRq;
+import com.epam.ta.reportportal.ws.model.item.UnlinkExternalIssueRQ;
 import com.epam.ta.reportportal.ws.model.item.UpdateTestItemRQ;
 import com.epam.ta.reportportal.ws.model.project.AnalyzerConfig;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -86,7 +91,11 @@ import static java.util.stream.Collectors.toSet;
 @Service
 public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 
+	public static final String INITIAL_STATUS_ATTRIBUTE_KEY = "initialStatus";
+
 	private final ProjectRepository projectRepository;
+
+	private final LaunchRepository launchRepository;
 
 	private final TestItemRepository testItemRepository;
 
@@ -105,11 +114,12 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 	private final Map<StatusEnum, StatusChangingStrategy> statusChangingStrategyMapping;
 
 	@Autowired
-	public UpdateTestItemHandlerImpl(ProjectRepository projectRepository, TestItemRepository testItemRepository,
-			LogRepository logRepository, TicketRepository ticketRepository, IssueTypeHandler issueTypeHandler, MessageBus messageBus,
-			LogIndexer logIndexer, IssueEntityRepository issueEntityRepository,
+	public UpdateTestItemHandlerImpl(ProjectRepository projectRepository, LaunchRepository launchRepository,
+			TestItemRepository testItemRepository, LogRepository logRepository, TicketRepository ticketRepository,
+			IssueTypeHandler issueTypeHandler, MessageBus messageBus, LogIndexer logIndexer, IssueEntityRepository issueEntityRepository,
 			Map<StatusEnum, StatusChangingStrategy> statusChangingStrategyMapping) {
 		this.projectRepository = projectRepository;
+		this.launchRepository = launchRepository;
 		this.testItemRepository = testItemRepository;
 		this.logRepository = logRepository;
 		this.ticketRepository = ticketRepository;
@@ -157,8 +167,9 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 						.addAutoAnalyzedFlag(issue.getAutoAnalyzed())
 						.get();
 
-				ofNullable(issueDefinition.getIssue().getExternalSystemIssues()).ifPresent(issues -> issueEntity.setTickets(collectTickets(issues,
-						user.getUserId()
+				ofNullable(issueDefinition.getIssue().getExternalSystemIssues()).ifPresent(issues -> issueEntity.setTickets(collectTickets(
+						issues,
+						user.getUsername()
 				)));
 
 				issueEntity.setTestItemResults(testItem.getItemResults());
@@ -168,7 +179,7 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 				testItemRepository.save(testItem);
 
 				if (ITEM_CAN_BE_INDEXED.test(testItem)) {
-					Long launchId = testItem.getLaunch().getId();
+					Long launchId = testItem.getLaunchId();
 					Long itemId = testItem.getItemId();
 					if (logsToReindexMap.containsKey(launchId)) {
 						logsToReindexMap.get(launchId).add(itemId);
@@ -211,10 +222,10 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 
 		Optional<StatusEnum> providedStatus = StatusEnum.fromValue(rq.getStatus());
 		if (providedStatus.isPresent()) {
-			expect(testItem.isHasChildren() && !testItem.getType().sameLevel(TestItemTypeEnum.STEP), equalTo(FALSE)).verify(
-					INCORRECT_REQUEST,
+			expect(testItem.isHasChildren() && !testItem.getType().sameLevel(TestItemTypeEnum.STEP), equalTo(FALSE)).verify(INCORRECT_REQUEST,
 					"Unable to change status on test item with children"
 			);
+			checkInitialStatusAttribute(testItem);
 			StatusEnum actualStatus = testItem.getItemResults().getStatus();
 			StatusChangingStrategy strategy = statusChangingStrategyMapping.get(actualStatus);
 			expect(strategy, notNull()).verify(INCORRECT_REQUEST,
@@ -228,81 +239,110 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 	}
 
 	@Override
-	public List<OperationCompletionRS> linkExternalIssues(ReportPortalUser.ProjectDetails projectDetails, LinkExternalIssueRQ rq,
+	public List<OperationCompletionRS> processExternalIssues(ExternalIssueRQ request, ReportPortalUser.ProjectDetails projectDetails,
 			ReportPortalUser user) {
 		List<String> errors = new ArrayList<>();
 
-		List<TestItem> testItems = testItemRepository.findAllById(rq.getTestItemIds());
+		List<TestItem> testItems = testItemRepository.findAllById(request.getTestItemIds());
 		List<TestItemActivityResource> before = testItems.stream()
 				.map(it -> TO_ACTIVITY_RESOURCE.apply(it, projectDetails.getProjectId()))
 				.collect(Collectors.toList());
 
-		List<Ticket> existedTickets = collectExistedTickets(rq.getIssues());
-		Set<Ticket> ticketsFromRq = collectTickets(rq.getIssues(), user.getUserId());
+		if (request.getClass().equals(LinkExternalIssueRQ.class)) {
+			LinkExternalIssueRQ linkRequest = (LinkExternalIssueRQ) request;
+			List<Ticket> existedTickets = collectExistedTickets(linkRequest.getIssues());
+			Set<Ticket> ticketsFromRq = collectTickets(linkRequest.getIssues(), user.getUsername());
+			linkIssues(testItems, existedTickets, ticketsFromRq, errors);
+		}
 
-		testItems.forEach(testItem -> {
-			try {
-				verifyTestItem(testItem, testItem.getItemId());
-				IssueEntity issue = testItem.getItemResults().getIssue();
-				issue.getTickets().addAll(existedTickets);
-				issue.getTickets().addAll(ticketsFromRq);
-			} catch (Exception e) {
-				errors.add(e.getMessage());
-			}
-		});
+		if (request.getClass().equals(UnlinkExternalIssueRQ.class)) {
+			unlinkIssues(testItems, (UnlinkExternalIssueRQ) request, errors);
+		}
 		expect(errors.isEmpty(), equalTo(TRUE)).verify(FAILED_TEST_ITEM_ISSUE_TYPE_DEFINITION, errors.toString());
 		testItemRepository.saveAll(testItems);
 		List<TestItemActivityResource> after = testItems.stream()
 				.map(it -> TO_ACTIVITY_RESOURCE.apply(it, projectDetails.getProjectId()))
 				.collect(Collectors.toList());
 
-		before.forEach(it -> messageBus.publishActivity(new LinkTicketEvent(
-				it,
+		before.forEach(it -> messageBus.publishActivity(new LinkTicketEvent(it,
 				after.stream().filter(t -> t.getId().equals(it.getId())).findFirst().get(),
 				user.getUserId(),
-				user.getUsername()
+				user.getUsername(),
+				ActivityAction.LINK_ISSUE
 		)));
 		return testItems.stream()
 				.map(testItem -> new OperationCompletionRS("TestItem with ID = '" + testItem.getItemId() + "' successfully updated."))
 				.collect(toList());
 	}
 
-	@Override
-	public List<OperationCompletionRS> unlinkExternalIssues(ReportPortalUser.ProjectDetails projectDetails, UnlinkExternalIssueRq rq,
-			ReportPortalUser user) {
-		List<String> errors = new ArrayList<>();
-		List<TestItem> testItems = testItemRepository.findAllById(rq.getTestItemIds());
-		testItems.forEach(testItem -> {
+	private void checkInitialStatusAttribute(TestItem testItem) {
+		Optional<ItemAttribute> statusAttribute = testItem.getAttributes()
+				.stream()
+				.filter(attribute -> INITIAL_STATUS_ATTRIBUTE_KEY.equalsIgnoreCase(attribute.getKey()) && attribute.isSystem())
+				.findAny();
+		if (!statusAttribute.isPresent()) {
+			ItemAttribute initialStatusAttribute = new ItemAttribute(INITIAL_STATUS_ATTRIBUTE_KEY,
+					testItem.getItemResults().getStatus().getExecutionCounterField(),
+					true
+			);
+			initialStatusAttribute.setTestItem(testItem);
+			testItem.getAttributes().add(initialStatusAttribute);
+		}
+	}
+
+	private void linkIssues(List<TestItem> items, List<Ticket> existedTickets, Set<Ticket> ticketsFromRq, List<String> errors) {
+		items.forEach(testItem -> {
 			try {
 				verifyTestItem(testItem, testItem.getItemId());
-				testItem.getItemResults().getIssue().getTickets().removeIf(it -> rq.getTicketIds().contains(it.getTicketId()));
+				IssueEntity issue = testItem.getItemResults().getIssue();
+				issue.getTickets().addAll(existedTickets);
+				issue.getTickets().addAll(ticketsFromRq);
+				issue.setAutoAnalyzed(false);
+			} catch (Exception e) {
+				errors.add(e.getMessage());
+			}
+		});
+	}
+
+	private void unlinkIssues(List<TestItem> items, UnlinkExternalIssueRQ request, List<String> errors) {
+		items.forEach(testItem -> {
+			try {
+				verifyTestItem(testItem, testItem.getItemId());
+				IssueEntity issue = testItem.getItemResults().getIssue();
+				if (issue.getTickets().removeIf(it -> request.getTicketIds().contains(it.getTicketId()))) {
+					issue.setAutoAnalyzed(false);
+				}
 			} catch (BusinessRuleViolationException e) {
 				errors.add(e.getMessage());
 			}
 		});
-		expect(errors.isEmpty(), equalTo(TRUE)).verify(FAILED_TEST_ITEM_ISSUE_TYPE_DEFINITION, errors.toString());
-		testItemRepository.saveAll(testItems);
-		return testItems.stream()
-				.map(testItem -> new OperationCompletionRS("TestItem with ID = '" + testItem.getItemId() + "' successfully updated."))
-				.collect(toList());
 	}
 
 	@Override
-	public void resetItemsIssue(List<Long> itemIds, Long projectId) {
+	public void resetItemsIssue(List<Long> itemIds, Long projectId, ReportPortalUser user) {
 		itemIds.forEach(itemId -> {
+			TestItem item = testItemRepository.findById(itemId).orElseThrow(() -> new ReportPortalException(TEST_ITEM_NOT_FOUND, itemId));
+			TestItemActivityResource before = TO_ACTIVITY_RESOURCE.apply(item, projectId);
+
 			IssueType issueType = issueTypeHandler.defineIssueType(projectId, TestItemIssueGroup.TO_INVESTIGATE.getLocator());
 			IssueEntity issueEntity = new IssueEntityBuilder(issueEntityRepository.findById(itemId)
 					.orElseThrow(() -> new ReportPortalException(ErrorType.ISSUE_TYPE_NOT_FOUND, itemId))).addIssueType(issueType)
-					.addAutoAnalyzedFlag(true)
+					.addAutoAnalyzedFlag(false)
 					.get();
 			issueEntityRepository.save(issueEntity);
+			item.getItemResults().setIssue(issueEntity);
+
+			TestItemActivityResource after = TO_ACTIVITY_RESOURCE.apply(item, projectId);
+			if (!StringUtils.equalsIgnoreCase(before.getIssueTypeLongName(), after.getIssueTypeLongName())) {
+				ItemIssueTypeDefinedEvent event = new ItemIssueTypeDefinedEvent(before, after, user.getUserId(), user.getUsername());
+				messageBus.publishActivity(event);
+			}
 		});
 	}
 
 	@Override
 	public OperationCompletionRS bulkInfoUpdate(BulkInfoUpdateRQ bulkUpdateRq, ReportPortalUser.ProjectDetails projectDetails) {
-		expect(projectRepository.existsById(projectDetails.getProjectId()), equalTo(TRUE)).verify(
-				PROJECT_NOT_FOUND,
+		expect(projectRepository.existsById(projectDetails.getProjectId()), equalTo(TRUE)).verify(PROJECT_NOT_FOUND,
 				projectDetails.getProjectId()
 		);
 
@@ -359,18 +399,30 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 	 * TODO document this
 	 *
 	 * @param externalIssues {@link com.epam.ta.reportportal.ws.model.issue.Issue.ExternalSystemIssue}
-	 * @param userId         {@link ReportPortalUser#userId}
+	 * @param username       {@link com.epam.ta.reportportal.entity.user.User#login}
 	 * @return {@link Set} of the {@link Ticket}
 	 */
-	private Set<Ticket> collectTickets(Collection<Issue.ExternalSystemIssue> externalIssues, Long userId) {
+	private Set<Ticket> collectTickets(Collection<Issue.ExternalSystemIssue> externalIssues, String username) {
 		if (CollectionUtils.isEmpty(externalIssues)) {
 			return Collections.emptySet();
 		}
 		return externalIssues.stream().map(it -> {
-			Ticket apply = TicketConverter.TO_TICKET.apply(it);
-			apply.setSubmitterId(ofNullable(it.getSubmitter()).orElse(userId));
-			apply.setSubmitDate(LocalDateTime.now());
-			return apply;
+			Ticket ticket;
+			Optional<Ticket> ticketOptional = ticketRepository.findByTicketId(it.getTicketId());
+			if (ticketOptional.isPresent()) {
+				ticket = ticketOptional.get();
+				ticket.setUrl(it.getUrl());
+				ticket.setBtsProject(it.getBtsProject());
+				ticket.setBtsUrl(it.getBtsUrl());
+			} else {
+				ticket = TicketConverter.TO_TICKET.apply(it);
+			}
+			ticket.setSubmitter(username);
+			ticket.setSubmitDate(ofNullable(it.getSubmitDate()).map(millis -> LocalDateTime.ofInstant(Instant.ofEpochMilli(millis),
+					ZoneOffset.UTC
+			)).orElse(LocalDateTime.now()));
+			ticketRepository.save(ticket);
+			return ticket;
 		}).collect(toSet());
 	}
 
@@ -382,15 +434,14 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 	 * @param testItem       Test Item
 	 */
 	private void validate(ReportPortalUser.ProjectDetails projectDetails, ReportPortalUser user, TestItem testItem) {
-		Launch launch = ofNullable(testItem.getLaunch()).orElseThrow(() -> new ReportPortalException(LAUNCH_NOT_FOUND));
+		Launch launch = launchRepository.findById(testItem.getLaunchId())
+				.orElseThrow(() -> new ReportPortalException(LAUNCH_NOT_FOUND, testItem.getLaunchId()));
 		if (user.getUserRole() != UserRole.ADMINISTRATOR) {
 			expect(launch.getProjectId(), equalTo(projectDetails.getProjectId())).verify(ACCESS_DENIED,
 					"Launch is not under the specified project."
 			);
 			if (projectDetails.getProjectRole().lowerThan(ProjectRole.PROJECT_MANAGER)) {
-				expect(user.getUsername(), Predicate.isEqual(launch.getUser().getLogin())).verify(ACCESS_DENIED,
-						"You are not a launch owner."
-				);
+				expect(user.getUserId(), Predicate.isEqual(launch.getUserId())).verify(ACCESS_DENIED, "You are not a launch owner.");
 			}
 		}
 	}
@@ -416,9 +467,10 @@ public class UpdateTestItemHandlerImpl implements UpdateTestItemHandler {
 				)
 		).verify();
 
-		expect(testItemRepository.hasChildren(item.getItemId(), item.getPath()), equalTo(FALSE),
+		expect(item.isHasChildren(),
+				equalTo(FALSE),
 				Suppliers.formattedSupplier(
-						"It is not allowed to udpate issue type for items with descendants. Test item '{}' has descendants.",
+						"It is not allowed to update issue type for items with descendants. Test item '{}' has descendants.",
 						id
 				)
 		).verify();

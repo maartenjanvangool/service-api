@@ -5,18 +5,24 @@ RUN apk add --no-cache ca-certificates git curl font-noto
 RUN addgroup -S -g 1000 rp-builder
 RUN adduser -D -S -G rp-builder -u 1000 -s /bin/ash rp-builder
 
+USER rp-builder
 WORKDIR /home/rp-builder
 
-COPY gradle/ ./gradle
-COPY gradlew .
-COPY build-quality.gradle build.gradle gradlew settings.gradle gradle.properties ./
-COPY . ./
-
-RUN chown -R rp-builder:rp-builder ./
-USER rp-builder
+### Copy gradle wrapper's stuff to init and cache gradle wrapper
+COPY --chown=rp-builder gradle/ ./gradle/
+COPY --chown=rp-builder gradlew*  ./
 RUN ./gradlew wrapper
+
+ARG buildNumber
+
+### Copy gradle build files to resolve and cache dependencies
+COPY --chown=rp-builder *.gradle gradle.properties ./
 RUN ./gradlew resolveDependencies --stacktrace
-RUN ./gradlew build --full-stacktrace
+
+### Copy source and run build
+COPY --chown=rp-builder src/ ./src/
+COPY --chown=rp-builder .git/ .git/
+RUN ./gradlew build -P buildNumber=${buildNumber} --full-stacktrace
 
 RUN mkdir -p /home/rp-builder/plugins
 RUN curl -o /home/rp-builder/plugins/JIRA.jar https://jitpack.io/com/github/reportportal/plugin-bts-jira/master/plugin-bts-jira-master.jar
@@ -24,15 +30,23 @@ RUN curl -o /home/rp-builder/plugins/RALLY.jar https://jitpack.io/com/github/rep
 
 FROM openjdk:8-jre-slim
 
+ARG version
+
+### Set quay.io image cache. Since the build is for development only,
+### there is no need to keep them forever
+### details: https://support.coreos.com/hc/en-us/articles/115001384693-Tag-Expiration
+LABEL quay.expires-after=1w
+
 LABEL maintainer="Andrei Varabyeu <andrei_varabyeu@epam.com>"
-LABEL version="@version@"
-LABEL description="@description@"
+LABEL version=${version}
+LABEL description="ReportPortal API Service: Development Version"
+
 
 ENV JAVA_OPTS="-Xmx1g -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp -Djava.security.egd=file:/dev/./urandom -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 ENV JAVA_APP=/app.jar
 
 RUN apt-get update && \
-    apt-get install -y fonts-noto net-tools && \
+    apt-get install -y fontconfig libfreetype6 fonts-noto net-tools && \
     rm -rf /var/lib/apt/lists/*
 
 RUN sh -c "echo '#!/bin/sh \n\

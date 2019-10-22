@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,15 @@ public interface GetLaunchHandler {
 	 * @return
 	 */
 	LaunchResource getLaunch(Long launchId, ReportPortalUser.ProjectDetails projectDetails);
+
+	/**
+	 * Get Launch resource by specified UUID
+	 *
+	 * @param launchId       Launch uuid
+	 * @param projectDetails Project Details
+	 * @return
+	 */
+	LaunchResource getLaunch(String launchId, ReportPortalUser.ProjectDetails projectDetails);
 
 	/**
 	 * Get Launch resource by specified Name (for Jenkins Plugin)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ public class WidgetConverter {
 		objectModel.setWidgetId(dashboardWidget.getId().getWidgetId());
 		objectModel.setWidgetPosition(new Position(dashboardWidget.getPositionX(), dashboardWidget.getPositionY()));
 		objectModel.setWidgetSize(new Size(dashboardWidget.getWidth(), dashboardWidget.getHeight()));
+		objectModel.setShare(dashboardWidget.isShare());
 		return objectModel;
 	};
 
@@ -71,6 +72,7 @@ public class WidgetConverter {
 		resource.setId(widget.getId());
 		resource.setProjectId(widget.getProject().getId());
 		resource.setName(widget.getName());
+		resource.setShared(widget.isShared());
 		resource.setDescription(widget.getDescription());
 		resource.setItemsCount(widget.getItemsCount());
 		resource.setContentFields(Sets.newHashSet(widget.getContentFields()));
@@ -102,6 +104,7 @@ public class WidgetConverter {
 		dashboardWidget.setWidth(model.getWidgetSize().getWidth());
 		dashboardWidget.setHeight(model.getWidgetSize().getHeight());
 		dashboardWidget.setDashboard(dashboard);
+		dashboardWidget.setShare(widget.isShared());
 		dashboardWidget.setWidget(widget);
 		dashboardWidget.setCreatedOn(isCreatedOn);
 		dashboardWidget.setWidgetOwner(widget.getOwner());

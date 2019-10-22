@@ -18,11 +18,10 @@ package com.epam.ta.reportportal.core.launch.impl;
 
 import com.epam.ta.reportportal.commons.ReportPortalUser;
 import com.epam.ta.reportportal.core.launch.FinishLaunchHandler;
-import com.epam.ta.reportportal.core.launch.util.LaunchLinkGenerator;
-import com.epam.ta.reportportal.entity.launch.Launch;
 import com.epam.ta.reportportal.ws.model.FinishExecutionRQ;
 import com.epam.ta.reportportal.ws.model.launch.FinishLaunchRS;
 import com.epam.ta.reportportal.ws.rabbit.MessageHeaders;
+import com.epam.ta.reportportal.ws.rabbit.RequestType;
 import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,7 +29,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
-import static com.epam.ta.reportportal.core.configs.rabbit.ReportingConfiguration.QUEUE_LAUNCH_FINISH;
+import static com.epam.ta.reportportal.core.configs.rabbit.ReportingConfiguration.EXCHANGE_REPORTING;
+import static com.epam.ta.reportportal.util.ControllerUtils.getReportingQueueKey;
 
 /**
  * @author Konstantin Antipin
@@ -44,26 +44,22 @@ public class FinishLaunchHandlerAsyncImpl implements FinishLaunchHandler {
 	AmqpTemplate amqpTemplate;
 
 	@Override
-	public Launch finishLaunch(String launchId, FinishExecutionRQ request, ReportPortalUser.ProjectDetails projectDetails,
-			ReportPortalUser user) {
-		throw new UnsupportedOperationException("Async api unsupported operation");
-	}
-
-	@Override
 	public FinishLaunchRS finishLaunch(String launchId, FinishExecutionRQ request, ReportPortalUser.ProjectDetails projectDetails,
-			ReportPortalUser user, LaunchLinkGenerator.LinkParams linkParams) {
+			ReportPortalUser user, String baseUrl) {
 
 		// todo: may be problem - no access to repository, so no possibility to validateRoles() here
-		amqpTemplate.convertAndSend(QUEUE_LAUNCH_FINISH, request, message -> {
+		amqpTemplate.convertAndSend(EXCHANGE_REPORTING, getReportingQueueKey(launchId), request, message -> {
 			Map<String, Object> headers = message.getMessageProperties().getHeaders();
+			headers.put(MessageHeaders.REQUEST_TYPE, RequestType.FINISH_LAUNCH);
 			headers.put(MessageHeaders.USERNAME, user.getUsername());
 			headers.put(MessageHeaders.PROJECT_NAME, projectDetails.getProjectName());
 			headers.put(MessageHeaders.LAUNCH_ID, launchId);
+			headers.put(MessageHeaders.BASE_URL, baseUrl);
 			return message;
 		});
 
 		FinishLaunchRS response = new FinishLaunchRS();
-		response.setUuid(launchId);
+		response.setId(launchId);
 		return response;
 	}
 }

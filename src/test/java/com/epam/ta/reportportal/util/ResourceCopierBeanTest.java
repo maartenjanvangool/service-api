@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.epam.ta.reportportal.util;
 
 import com.google.common.base.Charsets;
@@ -42,7 +58,7 @@ public class ResourceCopierBeanTest {
 	void testResourceCopierBean() throws IOException {
 		File createdFile = new File(StandardSystemProperty.JAVA_IO_TMPDIR.value(), RANDOM_NAME);
 		Resource resource = resourceLoader.getResource(RESOURCE_TO_BE_COPIED);
-		String copied = Files.toString(createdFile, Charsets.UTF_8);
+		String copied = Files.asCharSource(createdFile, Charsets.UTF_8).read();
 		String fromResource = CharStreams.toString(new InputStreamReader(resource.getInputStream(), Charsets.UTF_8));
 		assertEquals(fromResource, copied, "Copied file is not equal to resource source");
 	}

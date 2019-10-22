@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ public class TestItemPojo {
 		this.status = input.getItemResults().getStatus().name();
 
 		this.duration = Duration.between(input.getStartTime(), input.getItemResults().getEndTime()).toMillis()
-				/ (double) org.apache.commons.lang.time.DateUtils.MILLIS_PER_SECOND;
+				/ (double) org.apache.commons.lang3.time.DateUtils.MILLIS_PER_SECOND;
 
 		Set<Statistics> statistics = input.getItemResults().getStatistics();
 

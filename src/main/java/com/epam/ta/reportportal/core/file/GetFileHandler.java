@@ -1,11 +1,11 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,6 +16,7 @@
 package com.epam.ta.reportportal.core.file;
 
 import com.epam.ta.reportportal.commons.ReportPortalUser;
+import com.epam.ta.reportportal.entity.attachment.BinaryData;
 
 import java.io.InputStream;
 
@@ -30,7 +31,7 @@ public interface GetFileHandler {
 	 * @param loggedInUser Logged-in {@link ReportPortalUser}
 	 * @return {@link InputStream}
 	 */
-	InputStream getUserPhoto(ReportPortalUser loggedInUser);
+	BinaryData getUserPhoto(ReportPortalUser loggedInUser, boolean loadThumbnail);
 
 	/**
 	 * Returns {@link InputStream} for photo of the {@link com.epam.ta.reportportal.entity.user.User} with specified username
@@ -39,7 +40,8 @@ public interface GetFileHandler {
 	 * @param loggedInUser Logged-in {@link ReportPortalUser}
 	 * @return {@link InputStream}
 	 */
-	InputStream getUserPhoto(String username, ReportPortalUser loggedInUser);
+	BinaryData getUserPhoto(String username, ReportPortalUser loggedInUser, ReportPortalUser.ProjectDetails projectDetails,
+			boolean loadThumbnail);
 
 	/**
 	 * Returns {@link InputStream} for the file with the specified id
@@ -47,5 +49,5 @@ public interface GetFileHandler {
 	 * @param fileId Id of the file to get
 	 * @return {@link InputStream}
 	 */
-	InputStream loadFileById(String fileId);
+	BinaryData loadFileById(String fileId, ReportPortalUser.ProjectDetails projectDetails);
 }

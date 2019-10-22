@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ class Constants {
 	}
 
 	static final String NAME = "Demo Api Tests";
+	static final String PACKAGE = "com.epam.ta.reportportal.demodata.";
+	static final String ITEM_WITH_NESTED_STEPS_NAME = "Test with nested steps";
 	static final int STORY_PROBABILITY = 30;
 	static final int CONTENT_PROBABILITY = 60;
 	static final int ATTRIBUTES_COUNT = 3;

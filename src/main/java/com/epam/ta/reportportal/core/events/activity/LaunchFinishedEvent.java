@@ -15,6 +15,7 @@
  */
 package com.epam.ta.reportportal.core.events.activity;
 
+import com.epam.ta.reportportal.commons.ReportPortalUser;
 import com.epam.ta.reportportal.core.events.ActivityEvent;
 import com.epam.ta.reportportal.entity.activity.Activity;
 import com.epam.ta.reportportal.ws.converter.builders.ActivityBuilder;
@@ -32,6 +33,10 @@ public class LaunchFinishedEvent extends AbstractEvent implements ActivityEvent 
 
 	private LaunchActivityResource launchActivityResource;
 
+	private ReportPortalUser user;
+
+	private String baseUrl;
+
 	public LaunchFinishedEvent() {
 	}
 
@@ -40,12 +45,41 @@ public class LaunchFinishedEvent extends AbstractEvent implements ActivityEvent 
 		this.launchActivityResource = launchActivityResource;
 	}
 
+	public LaunchFinishedEvent(LaunchActivityResource launchActivityResource, ReportPortalUser user, String baseUrl) {
+		super(user.getUserId(), user.getUsername());
+		this.launchActivityResource = launchActivityResource;
+		this.user = user;
+		this.baseUrl = baseUrl;
+	}
+
+	public LaunchFinishedEvent(LaunchActivityResource launchActivityResource, String baseUrl, Long userId, String userLogin) {
+		super(userId, userLogin);
+		this.launchActivityResource = launchActivityResource;
+		this.baseUrl = baseUrl;
+	}
+
 	public LaunchActivityResource getLaunchActivityResource() {
 		return launchActivityResource;
 	}
 
 	public void setLaunchActivityResource(LaunchActivityResource launchActivityResource) {
 		this.launchActivityResource = launchActivityResource;
+	}
+
+	public String getBaseUrl() {
+		return baseUrl;
+	}
+
+	public void setBaseUrl(String baseUrl) {
+		this.baseUrl = baseUrl;
+	}
+
+	public ReportPortalUser getUser() {
+		return user;
+	}
+
+	public void setUser(ReportPortalUser user) {
+		this.user = user;
 	}
 
 	@Override

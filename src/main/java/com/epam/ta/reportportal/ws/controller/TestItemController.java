@@ -28,7 +28,7 @@ import com.epam.ta.reportportal.ws.model.*;
 import com.epam.ta.reportportal.ws.model.issue.DefineIssueRQ;
 import com.epam.ta.reportportal.ws.model.issue.Issue;
 import com.epam.ta.reportportal.ws.model.item.LinkExternalIssueRQ;
-import com.epam.ta.reportportal.ws.model.item.UnlinkExternalIssueRq;
+import com.epam.ta.reportportal.ws.model.item.UnlinkExternalIssueRQ;
 import com.epam.ta.reportportal.ws.model.item.UpdateTestItemRQ;
 import com.epam.ta.reportportal.ws.resolver.FilterFor;
 import com.epam.ta.reportportal.ws.resolver.SortFor;
@@ -42,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 import static com.epam.ta.reportportal.auth.permissions.Permissions.*;
@@ -60,9 +61,13 @@ import static org.springframework.http.HttpStatus.OK;
  * <p>
  */
 @RestController
-@RequestMapping("/{projectName}/item")
+@RequestMapping("/v1/{projectName}/item")
 @PreAuthorize(ASSIGNED_TO_PROJECT)
 public class TestItemController {
+
+	public static final String FILTER_ID_REQUEST_PARAM = "filterId";
+	public static final String IS_LATEST_LAUNCHES_REQUEST_PARAM = "isLatest";
+	public static final String LAUNCHES_LIMIT_REQUEST_PARAM = "launchesLimit";
 
 	private final StartTestItemHandler startTestItemHandler;
 	private final DeleteTestItemHandler deleteTestItemHandler;
@@ -85,7 +90,6 @@ public class TestItemController {
 
 	/* Report client API */
 
-	@Transactional
 	@PostMapping
 	@ResponseStatus(CREATED)
 	@ApiOperation("Start a root test item")
@@ -95,7 +99,6 @@ public class TestItemController {
 		return startTestItemHandler.startRootItem(user, extractProjectDetails(user, projectName), startTestItemRQ);
 	}
 
-	@Transactional
 	@PostMapping("/{parentItem}")
 	@ResponseStatus(CREATED)
 	@ApiOperation("Start a child test item")
@@ -105,7 +108,6 @@ public class TestItemController {
 		return startTestItemHandler.startChildItem(user, extractProjectDetails(user, projectName), startTestItemRQ, parentItem);
 	}
 
-	@Transactional
 	@PutMapping("/{testItemId}")
 	@ResponseStatus(OK)
 	@ApiOperation("Finish test item")
@@ -128,21 +130,36 @@ public class TestItemController {
 
 	}
 
+	@Transactional(readOnly = true)
+	@GetMapping("/uuid/{itemId}")
+	@ResponseStatus(OK)
+	@ApiOperation("Find test item by UUID")
+	public TestItemResource getTestItem(@PathVariable String projectName, @AuthenticationPrincipal ReportPortalUser user,
+			@PathVariable String itemId) {
+		return getTestItemHandler.getTestItem(itemId, extractProjectDetails(user, projectName), user);
+
+	}
+
 	//TODO check pre-defined filter
 	@Transactional(readOnly = true)
 	@GetMapping
 	@ResponseStatus(OK)
 	@ApiOperation("Find test items by specified filter")
 	public Iterable<TestItemResource> getTestItems(@PathVariable String projectName, @AuthenticationPrincipal ReportPortalUser user,
-			@RequestParam(value = DEFAULT_FILTER_PREFIX + Condition.EQ + CRITERIA_LAUNCH_ID) Long launchId,
+			@Nullable @RequestParam(value = DEFAULT_FILTER_PREFIX + Condition.EQ + CRITERIA_LAUNCH_ID, required = false) Long launchId,
+			@Nullable @RequestParam(value = FILTER_ID_REQUEST_PARAM, required = false) Long filterId,
+			@RequestParam(value = IS_LATEST_LAUNCHES_REQUEST_PARAM, defaultValue = "false", required = false) boolean isLatest,
+			@RequestParam(value = LAUNCHES_LIMIT_REQUEST_PARAM, defaultValue = "0", required = false) int launchesLimit,
 			@FilterFor(TestItem.class) Filter filter, @FilterFor(TestItem.class) Queryable predefinedFilter,
 			@SortFor(TestItem.class) Pageable pageable) {
-		return getTestItemHandler.getTestItems(
-				new CompositeFilter(Operator.AND, filter, predefinedFilter),
+		return getTestItemHandler.getTestItems(new CompositeFilter(Operator.AND, filter, predefinedFilter),
 				pageable,
 				extractProjectDetails(user, projectName),
 				user,
-				launchId
+				launchId,
+				filterId,
+				isLatest,
+				launchesLimit
 		);
 	}
 
@@ -204,6 +221,23 @@ public class TestItemController {
 	}
 
 	@Transactional(readOnly = true)
+	@GetMapping("/attribute/keys/all")
+	@ResponseStatus(OK)
+	@ApiOperation("Get all unique attribute keys of specified launch")
+	public List<String> getAttributeKeysForProject(@PathVariable String projectName, @AuthenticationPrincipal ReportPortalUser user,
+			@RequestParam(value = DEFAULT_FILTER_PREFIX + Condition.CNT + CRITERIA_ITEM_ATTRIBUTE_KEY) String value,
+			@RequestParam(value = FILTER_ID_REQUEST_PARAM) Long launchFilterId,
+			@RequestParam(value = IS_LATEST_LAUNCHES_REQUEST_PARAM, defaultValue = "false", required = false) boolean isLatest,
+			@RequestParam(value = LAUNCHES_LIMIT_REQUEST_PARAM, defaultValue = "0") int launchesLimit) {
+		return getTestItemHandler.getAttributeKeys(launchFilterId,
+				isLatest,
+				launchesLimit,
+				extractProjectDetails(user, projectName),
+				value
+		);
+	}
+
+	@Transactional(readOnly = true)
 	@GetMapping("/attribute/values")
 	@ResponseStatus(OK)
 	@ApiOperation("Get all unique attribute values of specified launch")
@@ -237,9 +271,9 @@ public class TestItemController {
 	@PutMapping("/issue/link")
 	@ResponseStatus(OK)
 	@ApiOperation("Attach external issue for specified test items")
-	public List<OperationCompletionRS> addExternalIssues(@PathVariable String projectName, @AuthenticationPrincipal ReportPortalUser user,
+	public List<OperationCompletionRS> linkExternalIssues(@PathVariable String projectName, @AuthenticationPrincipal ReportPortalUser user,
 			@RequestBody @Validated LinkExternalIssueRQ rq) {
-		return updateTestItemHandler.linkExternalIssues(extractProjectDetails(user, projectName), rq, user);
+		return updateTestItemHandler.processExternalIssues(rq, extractProjectDetails(user, projectName), user);
 	}
 
 	@Transactional
@@ -247,8 +281,8 @@ public class TestItemController {
 	@ResponseStatus(OK)
 	@ApiOperation("Unlink external issue for specified test items")
 	public List<OperationCompletionRS> unlinkExternalIssues(@PathVariable String projectName,
-			@AuthenticationPrincipal ReportPortalUser user, @RequestBody @Validated UnlinkExternalIssueRq rq) {
-		return updateTestItemHandler.unlinkExternalIssues(extractProjectDetails(user, projectName), rq, user);
+			@AuthenticationPrincipal ReportPortalUser user, @RequestBody @Validated UnlinkExternalIssueRQ rq) {
+		return updateTestItemHandler.processExternalIssues(rq, extractProjectDetails(user, projectName), user);
 	}
 
 	@Transactional(readOnly = true)

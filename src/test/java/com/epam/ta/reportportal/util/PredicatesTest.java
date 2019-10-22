@@ -1,7 +1,24 @@
+/*
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.epam.ta.reportportal.util;
 
 import com.epam.ta.reportportal.entity.enums.LaunchModeEnum;
 import com.epam.ta.reportportal.entity.enums.TestItemIssueGroup;
+import com.epam.ta.reportportal.entity.enums.TestItemTypeEnum;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.entity.item.TestItemResults;
 import com.epam.ta.reportportal.entity.item.issue.IssueEntity;
@@ -30,6 +47,7 @@ class PredicatesTest {
 	@Test
 	void checkCanBeIndexed() {
 		TestItem testItem = new TestItem();
+		testItem.setType(TestItemTypeEnum.STEP);
 		final TestItemResults itemResults = new TestItemResults();
 		final IssueEntity issueEntity = new IssueEntity();
 		issueEntity.setIgnoreAnalyzer(false);
@@ -45,6 +63,7 @@ class PredicatesTest {
 	void checkTIIndexed() {
 		TestItem testItem = new TestItem();
 		final TestItemResults itemResults = new TestItemResults();
+		testItem.setType(TestItemTypeEnum.STEP);
 		final IssueEntity issue = new IssueEntity();
 		final IssueType issueType = new IssueType();
 		issueType.setIssueGroup(new IssueGroup(TestItemIssueGroup.TO_INVESTIGATE));
@@ -52,12 +71,13 @@ class PredicatesTest {
 		issue.setIssueType(issueType);
 		itemResults.setIssue(issue);
 		testItem.setItemResults(itemResults);
-		assertFalse(ITEM_CAN_BE_INDEXED.test(testItem), "Item with TI issue shouldn't be available for indexing");
+		assertTrue(ITEM_CAN_BE_INDEXED.test(testItem), "Item with TI issue is available for indexing");
 	}
 
 	@Test
 	void checkIgnoreIndexed() {
 		TestItem testItem = new TestItem();
+		testItem.setType(TestItemTypeEnum.STEP);
 		final TestItemResults itemResults = new TestItemResults();
 		final IssueEntity issueEntity = new IssueEntity();
 		issueEntity.setIgnoreAnalyzer(true);

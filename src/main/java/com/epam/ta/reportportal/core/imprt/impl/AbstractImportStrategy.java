@@ -82,14 +82,14 @@ public abstract class AbstractImportStrategy implements ImportStrategy {
 		startLaunchRQ.setStartTime(initialStartTime);
 		startLaunchRQ.setName(launchName);
 		startLaunchRQ.setMode(Mode.DEFAULT);
-		return startLaunchHandler.startLaunch(user, projectDetails, startLaunchRQ).getUuid();
+		return startLaunchHandler.startLaunch(user, projectDetails, startLaunchRQ).getId();
 	}
 
 	protected void finishLaunch(String launchId, ReportPortalUser.ProjectDetails projectDetails, ReportPortalUser user,
-			ParseResults results) {
+			ParseResults results, String baseUrl) {
 		FinishExecutionRQ finishExecutionRQ = new FinishExecutionRQ();
 		finishExecutionRQ.setEndTime(results.getEndTime());
-		finishLaunchHandler.finishLaunch(launchId, finishExecutionRQ, projectDetails, user);
+		finishLaunchHandler.finishLaunch(launchId, finishExecutionRQ, projectDetails, user, baseUrl);
 		Launch launch = launchRepository.findByUuid(launchId)
 				.orElseThrow(() -> new ReportPortalException(ErrorType.LAUNCH_NOT_FOUND, launchId));
 		launch.setStartTime(results.getStartTime());

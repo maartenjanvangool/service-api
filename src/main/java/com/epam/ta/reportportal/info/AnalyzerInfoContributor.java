@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package com.epam.ta.reportportal.info;
 
-import com.epam.ta.reportportal.core.analyzer.client.RabbitMqManagementClient;
+import com.epam.ta.reportportal.core.analyzer.auto.client.RabbitMqManagementClient;
 import com.google.common.collect.ImmutableMap;
 import com.rabbitmq.http.client.domain.ExchangeInfo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +24,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static com.epam.ta.reportportal.core.analyzer.client.impl.AnalyzerUtils.ANALYZER_KEY;
 
 /**
  * Shows list of supported analyzers
@@ -45,7 +44,10 @@ public class AnalyzerInfoContributor implements ExtensionContributor {
 
 	@Override
 	public Map<String, ?> contribute() {
-		Set<String> names = managementClient.getAnalyzerExchangesInfo().stream().map(ExchangeInfo::getName).collect(Collectors.toSet());
-		return ImmutableMap.<String, Object>builder().put(ANALYZER_KEY, names).build();
+		Set<Object> analyzersInfo = managementClient.getAnalyzerExchangesInfo()
+				.stream()
+				.map((Function<ExchangeInfo, Object>) ExchangeInfo::getArguments)
+				.collect(Collectors.toSet());
+		return ImmutableMap.<String, Object>builder().put("analyzers", analyzersInfo).build();
 	}
 }

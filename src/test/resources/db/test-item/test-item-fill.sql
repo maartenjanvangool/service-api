@@ -41,7 +41,7 @@ insert into test_item_results(result_id, status) values (3, 'FAILED');
 
 insert into issue(issue_id, issue_type, issue_description, auto_analyzed, ignore_analyzer) values (3, 2, 'issue desc', false, true);
 
-insert into ticket(ticket_id, submitter_id, submit_date, bts_url, bts_project, url) values ('ticket', 2, now(), 'https://example.com', 'project', 'https://example.com/ticket');
+insert into ticket(ticket_id, submitter, submit_date, bts_url, bts_project, url) values ('ticket', 'default', now(), 'https://example.com', 'project', 'https://example.com/ticket');
 
 insert into launch (id, uuid, project_id, user_id, name, description, start_time, end_time, number, last_modified, mode, status)
 values (3, '334d153c-8f9c-4dff-8627-47dd003bee0f', 1, 1, 'test launch admin', 'desc', now(), null, 1, now(), 'DEFAULT', 'IN_PROGRESS');
@@ -61,6 +61,11 @@ insert into item_attribute (key, value, item_id, launch_id, system)
 values ('testKey', 'testValue', 5, null, false);
 
 insert into test_item_results(result_id, status) values (5, 'IN_PROGRESS');
+
+INSERT INTO public.shareable_entity (id, shared, owner, project_id) VALUES (1, FALSE, 'default', 2);
+INSERT INTO public.filter (id, name, target, description) VALUES (1, 'Admin Filter', 'Launch', NULL);
+INSERT INTO public.filter_sort (id, filter_id, field, direction) VALUES (1, 1, 'name', 'ASC');
+INSERT INTO public.filter_condition (id, filter_id, condition, value, search_criteria, negative) VALUES (1, 1, 'CONTAINS', 'test', 'name', FALSE);
 
 alter sequence launch_id_seq restart with 4;
 alter sequence test_item_item_id_seq restart with 7;

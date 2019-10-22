@@ -22,6 +22,7 @@ import com.epam.ta.reportportal.core.log.CreateLogHandler;
 import com.epam.ta.reportportal.dao.LaunchRepository;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
+import com.epam.ta.reportportal.entity.attachment.AttachmentMetaInfo;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.entity.launch.Launch;
 import com.epam.ta.reportportal.entity.log.Log;
@@ -35,6 +36,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Nonnull;
@@ -50,6 +52,7 @@ import java.util.Optional;
  */
 @Service
 @Primary
+@Transactional
 public class CreateLogHandlerImpl implements CreateLogHandler {
 
 	@Autowired
@@ -83,13 +86,13 @@ public class CreateLogHandlerImpl implements CreateLogHandler {
 	public EntryCreatedAsyncRS createLog(@Nonnull SaveLogRQ request, MultipartFile file, ReportPortalUser.ProjectDetails projectDetails) {
 		validate(request);
 
-		Optional<TestItem> itemOptional = testItemRepository.findByUuid(request.getItemId());
+		Optional<TestItem> itemOptional = testItemRepository.findByUuid(request.getItemUuid());
 		if (itemOptional.isPresent()) {
 			return createItemLog(request, itemOptional.get(), file, projectDetails.getProjectId());
 		}
 
-		Launch launch = launchRepository.findByUuid(request.getItemId())
-				.orElseThrow(() -> new ReportPortalException(ErrorType.TEST_ITEM_OR_LAUNCH_NOT_FOUND, request.getItemId()));
+		Launch launch = launchRepository.findByUuid(request.getLaunchUuid())
+				.orElseThrow(() -> new ReportPortalException(ErrorType.LAUNCH_NOT_FOUND, request.getLaunchUuid()));
 		return createLaunchLog(request, launch, file, projectDetails.getProjectId());
 	}
 
@@ -97,22 +100,26 @@ public class CreateLogHandlerImpl implements CreateLogHandler {
 		Log log = new LogBuilder().addSaveLogRq(request).addTestItem(item).get();
 		logRepository.save(log);
 		saveBinaryData(file, projectId, log.getId(), testItemService.getEffectiveLaunch(item).getId(), item.getItemId());
-		return new EntryCreatedAsyncRS(log.getId());
+		return new EntryCreatedAsyncRS(log.getUuid());
 	}
 
 	private EntryCreatedAsyncRS createLaunchLog(SaveLogRQ request, Launch launch, MultipartFile file, Long projectId) {
 		Log log = new LogBuilder().addSaveLogRq(request).addLaunch(launch).get();
 		logRepository.save(log);
 		saveBinaryData(file, projectId, log.getId(), launch.getId(), null);
-		return new EntryCreatedAsyncRS(log.getId());
+		return new EntryCreatedAsyncRS(log.getUuid());
 	}
 
 	private void saveBinaryData(MultipartFile file, Long projectId, Long logId, Long launchId, Long itemId) {
 		if (!Objects.isNull(file)) {
 			SaveLogBinaryDataTask saveLogBinaryDataTask = this.saveLogBinaryDataTask.get()
 					.withFile(file)
-					.withProjectId(projectId)
-					.withLogId(logId).withLaunchId(launchId).withItemId(itemId);
+					.withAttachmentMetaInfo(AttachmentMetaInfo.builder()
+							.withProjectId(projectId)
+							.withLaunchId(launchId)
+							.withItemId(itemId)
+							.withLogId(logId)
+							.build());
 
 			taskExecutor.execute(saveLogBinaryDataTask);
 		}

@@ -16,7 +16,6 @@
 
 package com.epam.ta.reportportal.ws.rabbit;
 
-import com.epam.ta.reportportal.binary.DataStoreService;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.ProjectRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
@@ -28,13 +27,11 @@ import com.epam.ta.reportportal.ws.model.TestItemResource;
 import com.epam.ta.reportportal.ws.model.log.LogResource;
 import com.epam.ta.reportportal.ws.model.project.ProjectResource;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,26 +51,17 @@ public class RepositoryAdaptersConsumer {
 
 	private TestItemRepository testItemRepository;
 
-	private DataStoreService dataStoreService;
-
 	private ProjectConverter projectConverter;
 
 	private TestItemResourceAssembler itemResourceAssembler;
 
 	public RepositoryAdaptersConsumer(LogRepository logRepository, ProjectRepository projectRepository,
-			TestItemRepository testItemRepository, DataStoreService dataStoreService, ProjectConverter projectConverter,
-			TestItemResourceAssembler itemResourceAssembler) {
+			TestItemRepository testItemRepository, ProjectConverter projectConverter, TestItemResourceAssembler itemResourceAssembler) {
 		this.logRepository = logRepository;
 		this.projectRepository = projectRepository;
 		this.testItemRepository = testItemRepository;
-		this.dataStoreService = dataStoreService;
 		this.projectConverter = projectConverter;
 		this.itemResourceAssembler = itemResourceAssembler;
-	}
-
-	@Autowired
-	public void setDataStoreService(DataStoreService dataStoreService) {
-		this.dataStoreService = dataStoreService;
 	}
 
 	@RabbitListener(queues = PROJECTS_FIND_BY_NAME)
@@ -92,12 +80,4 @@ public class RepositoryAdaptersConsumer {
 		List<Log> logs = logRepository.findByTestItemId(itemRef, limit /*, loadBinaryData*/);
 		return logs.stream().map(LogConverter.TO_RESOURCE).collect(Collectors.toList());
 	}
-
-	//TODO think about how to work with such content
-
-	@RabbitListener(queues = DATA_STORAGE_FETCH_DATA_QUEUE)
-	public InputStream fetchData(String dataId) {
-		return dataStoreService.load(dataId);
-	}
-
 }

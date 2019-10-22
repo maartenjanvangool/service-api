@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.epam.ta.reportportal.entity.ItemAttribute;
 import com.epam.ta.reportportal.entity.enums.LaunchModeEnum;
 import com.epam.ta.reportportal.entity.enums.StatusEnum;
 import com.epam.ta.reportportal.entity.launch.Launch;
-import com.epam.ta.reportportal.entity.user.User;
 import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.model.ErrorType;
 import com.epam.ta.reportportal.ws.model.attribute.ItemAttributeResource;
@@ -76,10 +75,8 @@ public class LaunchBuilder implements Supplier<Launch> {
 		return this;
 	}
 
-	public LaunchBuilder addUser(Long userId) {
-		User user = new User();
-		user.setId(userId);
-		launch.setUser(user);
+	public LaunchBuilder addUserId(Long userId) {
+		launch.setUserId(userId);
 		return this;
 	}
 

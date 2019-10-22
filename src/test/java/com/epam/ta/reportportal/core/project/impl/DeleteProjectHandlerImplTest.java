@@ -16,9 +16,9 @@
 
 package com.epam.ta.reportportal.core.project.impl;
 
-import com.epam.ta.reportportal.core.analyzer.LogIndexer;
-import com.epam.ta.reportportal.core.analyzer.client.AnalyzerServiceClient;
-import com.epam.ta.reportportal.core.analyzer.impl.AnalyzerStatusCache;
+import com.epam.ta.reportportal.core.analyzer.auto.LogIndexer;
+import com.epam.ta.reportportal.core.analyzer.auto.client.AnalyzerServiceClient;
+import com.epam.ta.reportportal.core.analyzer.auto.impl.AnalyzerStatusCache;
 import com.epam.ta.reportportal.core.events.MessageBus;
 import com.epam.ta.reportportal.core.events.activity.ProjectIndexEvent;
 import com.epam.ta.reportportal.dao.ProjectRepository;
@@ -129,7 +129,7 @@ class DeleteProjectHandlerImplTest {
 		when(userRepository.findByLogin(userName)).thenReturn(Optional.of(new User()));
 		Cache<Long, Long> cache = CacheBuilder.newBuilder().build();
 		cache.put(2L, projectId);
-		when(analyzerStatusCache.getAnalyzeStatus()).thenReturn(cache);
+		when(analyzerStatusCache.getAnalyzeStatus(AnalyzerStatusCache.AUTO_ANALYZER_KEY)).thenReturn(Optional.of(cache));
 
 		ReportPortalException exception = assertThrows(ReportPortalException.class, () -> handler.deleteProjectIndex(projectName, "user"));
 
@@ -155,7 +155,7 @@ class DeleteProjectHandlerImplTest {
 		project.setName(projectName);
 		when(projectRepository.findByName(projectName)).thenReturn(Optional.of(project));
 		when(userRepository.findByLogin(userName)).thenReturn(Optional.of(new User()));
-		when(analyzerStatusCache.getAnalyzeStatus()).thenReturn(CacheBuilder.newBuilder().build());
+		when(analyzerStatusCache.getAnalyzeStatus(AnalyzerStatusCache.AUTO_ANALYZER_KEY)).thenReturn(Optional.of(CacheBuilder.newBuilder().build()));
 		when(analyzerServiceClient.hasClients()).thenReturn(true);
 
 		OperationCompletionRS response = handler.deleteProjectIndex(projectName, "user");

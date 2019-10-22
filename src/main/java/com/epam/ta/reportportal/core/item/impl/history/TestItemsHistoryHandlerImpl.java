@@ -1,11 +1,11 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,9 @@ import com.epam.ta.reportportal.dao.LaunchRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.item.TestItem;
 import com.epam.ta.reportportal.entity.launch.Launch;
+import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.converter.converters.TestItemConverter;
+import com.epam.ta.reportportal.ws.model.ErrorType;
 import com.epam.ta.reportportal.ws.model.TestItemHistoryElement;
 import com.epam.ta.reportportal.ws.model.TestItemResource;
 import com.google.common.collect.Lists;
@@ -41,7 +43,6 @@ import static com.epam.ta.reportportal.ws.model.ValidationConstraints.MAX_HISTOR
 import static com.epam.ta.reportportal.ws.model.ValidationConstraints.MIN_HISTORY_DEPTH_BOUND;
 import static java.lang.Boolean.TRUE;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * Creating items history based on {@link TestItem#uniqueId} field
@@ -50,6 +51,8 @@ import static java.util.stream.Collectors.toSet;
  */
 @Service
 public class TestItemsHistoryHandlerImpl implements TestItemsHistoryHandler {
+
+	private static final int ITEMS_HISTORY_LIMIT = 2000;
 
 	private TestItemRepository testItemRepository;
 
@@ -69,18 +72,21 @@ public class TestItemsHistoryHandlerImpl implements TestItemsHistoryHandler {
 		List<Long> itemIds = Lists.newArrayList(startPointsIds);
 		List<TestItem> itemsForHistory = testItemRepository.findAllById(itemIds);
 		validateItems(itemsForHistory, itemIds, projectDetails.getProjectId());
-		List<Launch> launchesHistory = launchRepository.findLaunchesHistory(historyDepth,
-				itemsForHistory.get(0).getLaunch().getId(),
-				itemsForHistory.get(0).getLaunch().getName(),
-				projectDetails.getProjectId()
-		);
 
+		TestItem itemForHistory = itemsForHistory.get(0);
+		Long launchId = itemForHistory.getLaunchId();
+		Launch launch = launchRepository.findById(launchId).orElseThrow(() -> new ReportPortalException(ErrorType.LAUNCH_NOT_FOUND, launchId));
+		List<Launch> launchesHistory = launchRepository.findLaunchesHistory(historyDepth, launchId, launch.getName(),
+				projectDetails.getProjectId());
+
+		int itemsLimitPerLaunch = ITEMS_HISTORY_LIMIT / historyDepth;
 		List<TestItem> itemsHistory = testItemRepository.loadItemsHistory(itemsForHistory.stream()
-						.map(TestItem::getUniqueId)
-						.collect(Collectors.toList()),
-				launchesHistory.stream().map(Launch::getId).collect(toList())
-		);
-		Map<Long, List<TestItem>> groupedByLaunch = itemsHistory.stream().collect(Collectors.groupingBy(it -> it.getLaunch().getId()));
+				.map(TestItem::getUniqueId)
+				.collect(Collectors.toList()), launchesHistory.stream().map(Launch::getId).collect(toList()), itemsLimitPerLaunch);
+
+		Map<Long, List<TestItem>> groupedByLaunch = itemsHistory.stream().collect(Collectors.groupingBy(TestItem::getLaunchId));
+		addRequestedItemsToFirstLaunch(groupedByLaunch, launchId, itemsForHistory);
+
 		return launchesHistory.stream().map(l -> buildHistoryElement(l, groupedByLaunch.get(l.getId()))).collect(toList());
 	}
 
@@ -88,7 +94,11 @@ public class TestItemsHistoryHandlerImpl implements TestItemsHistoryHandler {
 		BusinessRule.expect(itemsForHistory, Preconditions.NOT_EMPTY_COLLECTION)
 				.verify(UNABLE_LOAD_TEST_ITEM_HISTORY, "Unable to find history for items '" + ids + "'.");
 
-		Set<Long> projectIds = itemsForHistory.stream().map(item -> item.getLaunch().getProjectId()).collect(toSet());
+		Set<Long> projectIds = launchRepository.findAllById(itemsForHistory.stream().map(TestItem::getLaunchId).collect(Collectors.toSet()))
+				.stream()
+				.map(Launch::getProjectId)
+				.collect(Collectors.toSet());
+
 		BusinessRule.expect((projectIds.size() == 1) && (projectIds.contains(projectId)), Predicates.equalTo(TRUE))
 				.verify(UNABLE_LOAD_TEST_ITEM_HISTORY, "Unable to find history for items '" + ids + "'.");
 
@@ -106,15 +116,14 @@ public class TestItemsHistoryHandlerImpl implements TestItemsHistoryHandler {
 		 * parent is empty check launch id - for example suite
 		 */
 		if (null == itemsForHistory.get(0).getParent()) {
-			Long launchId = itemsForHistory.get(0).getLaunch().getId();
-			itemsForHistory.forEach(it -> BusinessRule.expect(it.getLaunch().getId(), launch -> Objects.equals(launch, launchId))
+			Long launchId = itemsForHistory.get(0).getLaunchId();
+			itemsForHistory.forEach(it -> BusinessRule.expect(it.getLaunchId(), launch -> Objects.equals(launch, launchId))
 					.verify(UNABLE_LOAD_TEST_ITEM_HISTORY, "All test items should be siblings."));
 		} else {
 			/* Validate that items do not contains different parents */
 			itemsForHistory.forEach(it -> BusinessRule.expect(it.getParent().getItemId(),
 					parent -> Objects.equals(parent, itemsForHistory.get(0).getParent().getItemId())
-			)
-					.verify(UNABLE_LOAD_TEST_ITEM_HISTORY, "All test items should be siblings."));
+			).verify(UNABLE_LOAD_TEST_ITEM_HISTORY, "All test items should be siblings."));
 		}
 	}
 
@@ -139,5 +148,14 @@ public class TestItemsHistoryHandlerImpl implements TestItemsHistoryHandler {
 		testItemHistoryElement.setResources(resources);
 		testItemHistoryElement.setLaunchStatus(launch.getStatus().name());
 		return testItemHistoryElement;
+	}
+
+	private void addRequestedItemsToFirstLaunch(Map<Long, List<TestItem>> groupedByLaunch, Long launchId, List<TestItem> itemsForHistory) {
+		List<TestItem> firstLaunchLimitedItems = groupedByLaunch.get(launchId);
+		itemsForHistory.forEach(item -> {
+			if (!firstLaunchLimitedItems.contains(item)) {
+				firstLaunchLimitedItems.add(item);
+			}
+		});
 	}
 }

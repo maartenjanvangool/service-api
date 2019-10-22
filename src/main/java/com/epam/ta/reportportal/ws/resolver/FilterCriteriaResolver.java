@@ -1,7 +1,24 @@
+/*
+ * Copyright 2019 EPAM Systems
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.epam.ta.reportportal.ws.resolver;
 
 import com.epam.ta.reportportal.commons.Predicates;
 import com.epam.ta.reportportal.commons.querygen.Condition;
+import com.epam.ta.reportportal.commons.querygen.ConvertibleCondition;
 import com.epam.ta.reportportal.commons.querygen.Filter;
 import com.epam.ta.reportportal.commons.querygen.FilterCondition;
 import com.epam.ta.reportportal.commons.validation.BusinessRule;
@@ -14,8 +31,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -64,7 +81,7 @@ public class FilterCriteriaResolver implements HandlerMethodArgumentResolver {
 	private <T> Filter resolveAsList(MethodParameter methodParameter, NativeWebRequest webRequest) {
 		Class<T> domainModelType = (Class<T>) methodParameter.getParameterAnnotation(FilterFor.class).value();
 
-		Set<FilterCondition> filterConditions = webRequest.getParameterMap()
+		List<ConvertibleCondition> filterConditions = webRequest.getParameterMap()
 				.entrySet()
 				.stream()
 				.filter(parameter -> parameter.getKey().startsWith(DEFAULT_FILTER_PREFIX) && parameter.getValue().length > 0)
@@ -85,7 +102,7 @@ public class FilterCriteriaResolver implements HandlerMethodArgumentResolver {
 					return new FilterCondition(condition, isNegative, parameter.getValue()[0], criteria);
 
 				})
-				.collect(Collectors.toSet());
+				.collect(Collectors.toList());
 		return new Filter(domainModelType, filterConditions);
 	}
 

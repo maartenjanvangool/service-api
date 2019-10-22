@@ -36,7 +36,6 @@ import com.epam.ta.reportportal.ws.model.launch.UpdateLaunchRQ;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.jdbc.Sql;
@@ -99,6 +98,11 @@ class LaunchControllerTest extends BaseMvcTest {
 	@Test
 	void getLaunchPositive() throws Exception {
 		mockMvc.perform(get(DEFAULT_PROJECT_BASE_URL + "/launch/2").with(token(oAuthHelper.getDefaultToken()))).andExpect(status().is(200));
+	}
+
+	@Test
+	void getLaunchUuidPositive() throws Exception {
+		mockMvc.perform(get(DEFAULT_PROJECT_BASE_URL + "/launch/uuid/4850a659-ac26-4a65-8ea4-a6756a57fb92").with(token(oAuthHelper.getDefaultToken()))).andExpect(status().is(200));
 	}
 
 	@Test
@@ -224,7 +228,6 @@ class LaunchControllerTest extends BaseMvcTest {
 		launchRepository.findAllById(ids).forEach(it -> assertSame(it.getMode(), LaunchModeEnum.DEBUG));
 	}
 
-	@Disabled
 	@Test
 	void getLaunches() throws Exception {
 		mockMvc.perform(get(DEFAULT_PROJECT_BASE_URL
@@ -260,7 +263,6 @@ class LaunchControllerTest extends BaseMvcTest {
 				.andExpect(jsonPath("$.content", hasSize(4)));
 	}
 
-	@Disabled
 	@Test
 	void export() throws Exception {
 		mockMvc.perform(get(DEFAULT_PROJECT_BASE_URL + "/launch/1/report").with(token(oAuthHelper.getDefaultToken())))

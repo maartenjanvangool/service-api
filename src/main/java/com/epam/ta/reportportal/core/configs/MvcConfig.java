@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,13 +79,6 @@ public class MvcConfig implements WebMvcConfigurer {
 			registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
 		}
 	}
-
-	//	@Override
-	//	public void addViewControllers(ViewControllerRegistry registry) {
-	//		registry.addViewController("/").setViewName("forward:/index.htm");
-	//		registry.setOrder(Ordered.HIGHEST_PRECEDENCE);
-	//
-	//	}
 
 	@Bean
 	public SortArgumentResolver sortArgumentResolver() {

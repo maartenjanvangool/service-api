@@ -32,6 +32,7 @@ VALUES (1,
         'IN_PROGRESS');
 
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -45,6 +46,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (1,
+        'uuid1',
         'Test suite',
         'SUITE',
         now(),
@@ -58,6 +60,7 @@ VALUES (1,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -71,6 +74,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (2,
+        'uuid2',
         'Test item 1',
         'TEST',
         now(),
@@ -84,6 +88,7 @@ VALUES (2,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -97,6 +102,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (3,
+        'uuid3',
         'Step item 1',
         'STEP',
         now(),
@@ -110,6 +116,7 @@ VALUES (3,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -123,6 +130,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (4,
+        'uuid4',
         'After method 1',
         'AFTER_METHOD',
         now(),
@@ -136,6 +144,7 @@ VALUES (4,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -149,6 +158,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (5,
+        'uuid5',
         'Step item 2',
         'STEP',
         now(),
@@ -162,6 +172,7 @@ VALUES (5,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -175,6 +186,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (6,
+        'uuid6',
         'Test item 2',
         'TEST',
         now(),
@@ -188,6 +200,7 @@ VALUES (6,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -201,6 +214,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (14,
+        'uuid14',
         'Test suite',
         'SUITE',
         now(),
@@ -216,6 +230,7 @@ VALUES (14,
 
 
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -229,6 +244,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (7,
+        'uuid7',
         'Step item 3',
         'STEP',
         now(),
@@ -242,6 +258,7 @@ VALUES (7,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -255,6 +272,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (8,
+        'uuid8',
         'Step item 4',
         'STEP',
         now(),
@@ -268,6 +286,7 @@ VALUES (8,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -281,6 +300,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (9,
+        'uuid9',
         'Test item 3',
         'TEST',
         now(),
@@ -294,6 +314,7 @@ VALUES (9,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -307,6 +328,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (10,
+        'uuid10',
         'before method item 5',
         'BEFORE_METHOD',
         now(),
@@ -320,6 +342,7 @@ VALUES (10,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -333,6 +356,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (11,
+        'uuid11',
         'Step item 5',
         'STEP',
         now(),
@@ -346,6 +370,7 @@ VALUES (11,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -359,6 +384,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (12,
+        'uuid12',
         'Step item 6',
         'STEP',
         now(),
@@ -372,6 +398,7 @@ VALUES (12,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -385,6 +412,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (13,
+        'uuid13',
         'Step item 7',
         'STEP',
         now(),
@@ -398,6 +426,7 @@ VALUES (13,
         null,
         1);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -411,6 +440,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (15,
+        'uuid15',
         'Test item 1',
         'TEST',
         now(),
@@ -424,6 +454,7 @@ VALUES (15,
         null,
         2);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -437,6 +468,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (16,
+        'uuid16',
         'Step item 1',
         'STEP',
         now(),
@@ -450,6 +482,7 @@ VALUES (16,
         null,
         2);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -463,6 +496,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (17,
+        'uuid17',
         'Step item 2',
         'STEP',
         now(),
@@ -476,6 +510,7 @@ VALUES (17,
         null,
         2);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -489,6 +524,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (18,
+        'uuid18',
         'Step item 3',
         'STEP',
         now(),
@@ -502,6 +538,7 @@ VALUES (18,
         null,
         2);
 INSERT INTO public.test_item (item_id,
+                              uuid,
                               name,
                               type,
                               start_time,
@@ -515,6 +552,7 @@ INSERT INTO public.test_item (item_id,
                               retry_of,
                               launch_id)
 VALUES (19,
+        'uuid19',
         'Step item 4',
         'STEP',
         now(),
@@ -626,21 +664,6 @@ VALUES ('skippedIssue', 'true', null, 1, true),
        ('testKey', 'testValue', null, 3, false),
        ('testKey', 'testValue', null, 4, false);
 
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (1, 'statistics$executions$passed');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (2, 'statistics$executions$total');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (15, 'statistics$defects$product_bug$pb001');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (16, 'statistics$defects$product_bug$total');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (17, 'statistics$executions$failed');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (21, 'statistics$defects$to_investigate$ti001');
-INSERT INTO public.statistics_field (sf_id, name)
-VALUES (22, 'statistics$defects$to_investigate$total');
-
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (5, 1, null, 3, 1);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
@@ -690,11 +713,11 @@ VALUES (7, 7, 1, null, 1);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (8, 7, 1, null, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (61, 1, null, 16, 15);
+VALUES (61, 1, null, 16, 8);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (62, 1, null, 16, 16);
+VALUES (62, 1, null, 16, 7);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (69, 1, null, 16, 17);
+VALUES (69, 1, null, 16, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (70, 1, null, 16, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
@@ -708,55 +731,55 @@ VALUES (78, 1, null, 17, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (79, 1, 2, null, 1);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (81, 1, null, 14, 21);
+VALUES (81, 1, null, 14, 12);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (82, 1, null, 14, 22);
+VALUES (82, 1, null, 14, 11);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (83, 1, null, 15, 21);
+VALUES (83, 1, null, 15, 12);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (84, 1, null, 15, 22);
+VALUES (84, 1, null, 15, 11);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (85, 1, null, 18, 21);
+VALUES (85, 1, null, 18, 12);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (86, 1, null, 18, 22);
+VALUES (86, 1, null, 18, 11);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (87, 1, 2, null, 21);
+VALUES (87, 1, 2, null, 12);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (88, 1, 2, null, 22);
+VALUES (88, 1, 2, null, 11);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (93, 1, null, 18, 17);
+VALUES (93, 1, null, 18, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (94, 1, null, 18, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (57, 2, null, 14, 15);
+VALUES (57, 2, null, 14, 8);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (58, 2, null, 14, 16);
+VALUES (58, 2, null, 14, 7);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (59, 2, null, 15, 15);
+VALUES (59, 2, null, 15, 8);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (60, 2, null, 15, 16);
+VALUES (60, 2, null, 15, 7);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (101, 1, null, 19, 15);
+VALUES (101, 1, null, 19, 8);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (102, 1, null, 19, 16);
+VALUES (102, 1, null, 19, 7);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (63, 2, 2, null, 15);
+VALUES (63, 2, 2, null, 8);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (64, 2, 2, null, 16);
+VALUES (64, 2, 2, null, 7);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (65, 3, null, 14, 17);
+VALUES (65, 3, null, 14, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (66, 4, null, 14, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (67, 3, null, 15, 17);
+VALUES (67, 3, null, 15, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (68, 4, null, 15, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (109, 1, null, 19, 17);
+VALUES (109, 1, null, 19, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (110, 1, null, 19, 2);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
-VALUES (71, 3, 2, null, 17);
+VALUES (71, 3, 2, null, 4);
 INSERT INTO public.statistics (s_id, s_counter, launch_id, item_id, statistics_field_id)
 VALUES (72, 4, 2, null, 2);
 

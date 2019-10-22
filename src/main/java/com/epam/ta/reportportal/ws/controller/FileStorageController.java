@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import com.epam.ta.reportportal.commons.EntityUtils;
 import com.epam.ta.reportportal.commons.ReportPortalUser;
 import com.epam.ta.reportportal.core.file.GetFileHandler;
 import com.epam.ta.reportportal.core.user.EditUserHandler;
+import com.epam.ta.reportportal.entity.attachment.BinaryData;
 import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.model.OperationCompletionRS;
 import io.swagger.annotations.ApiOperation;
@@ -27,6 +28,7 @@ import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -36,11 +38,14 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static com.epam.ta.reportportal.auth.permissions.Permissions.ASSIGNED_TO_PROJECT;
+import static com.epam.ta.reportportal.util.ProjectExtractor.extractProjectDetails;
+
 /**
  * @author Dzianis_Shybeka
  */
 @RestController
-@RequestMapping("/data")
+@RequestMapping("/v1/data")
 public class FileStorageController {
 
 	private final EditUserHandler editUserHandler;
@@ -54,10 +59,11 @@ public class FileStorageController {
 	}
 
 	@Transactional(readOnly = true)
-	@GetMapping(value = "/{dataId}")
-	public void getFile(@PathVariable("dataId") String dataId, HttpServletResponse response,
+	@PreAuthorize(ASSIGNED_TO_PROJECT)
+	@GetMapping(value = "/{projectName}/{dataId}")
+	public void getFile(@PathVariable String projectName, @PathVariable("dataId") String dataId, HttpServletResponse response,
 			@AuthenticationPrincipal ReportPortalUser user) {
-		toResponse(response, getFileHandler.loadFileById(dataId));
+		toResponse(response, getFileHandler.loadFileById(dataId, extractProjectDetails(user, projectName)));
 	}
 
 	/**
@@ -66,19 +72,27 @@ public class FileStorageController {
 	@Transactional(readOnly = true)
 	@GetMapping(value = "/photo")
 	@ApiOperation("Get photo of current user")
-	public void getMyPhoto(@AuthenticationPrincipal ReportPortalUser user, HttpServletResponse response) {
-		toResponse(response, getFileHandler.getUserPhoto(user));
+	public void getMyPhoto(@AuthenticationPrincipal ReportPortalUser user, HttpServletResponse response,
+			@RequestParam(value = "loadThumbnail", required = false) boolean loadThumbnail) {
+		toResponse(response, getFileHandler.getUserPhoto(user, loadThumbnail));
 	}
 
 	/**
 	 * (non-Javadoc)
 	 */
 	@Transactional(readOnly = true)
-	@GetMapping(value = "/userphoto")
+	@PreAuthorize(ASSIGNED_TO_PROJECT)
+	@GetMapping(value = "/{projectName}/userphoto")
 	@ApiOperation("Get user's photo")
-	public void getUserPhoto(@RequestParam(value = "id") String username, HttpServletResponse response,
+	public void getUserPhoto(@PathVariable String projectName, @RequestParam(value = "id") String username,
+			@RequestParam(value = "loadThumbnail", required = false) boolean loadThumbnail, HttpServletResponse response,
 			@AuthenticationPrincipal ReportPortalUser user) {
-		toResponse(response, getFileHandler.getUserPhoto(EntityUtils.normalizeId(username), user));
+		BinaryData userPhoto = getFileHandler.getUserPhoto(EntityUtils.normalizeId(username),
+				user,
+				extractProjectDetails(user, projectName),
+				loadThumbnail
+		);
+		toResponse(response, userPhoto);
 	}
 
 	@Transactional
@@ -98,14 +112,14 @@ public class FileStorageController {
 	/**
 	 * Copies data from provided {@link InputStream} to Response
 	 *
-	 * @param response    Response
-	 * @param inputStream Stored data
+	 * @param response   Response
+	 * @param binaryData Stored data
 	 */
-	private void toResponse(HttpServletResponse response, InputStream inputStream) {
-		if (inputStream != null) {
-
+	private void toResponse(HttpServletResponse response, BinaryData binaryData) {
+		if (binaryData.getInputStream() != null) {
 			try {
-				IOUtils.copy(inputStream, response.getOutputStream());
+				response.setContentType(binaryData.getContentType());
+				IOUtils.copy(binaryData.getInputStream(), response.getOutputStream());
 			} catch (IOException e) {
 				throw new ReportPortalException("Unable to retrieve binary data from data storage", e);
 			}

@@ -16,8 +16,9 @@
 
 package com.epam.ta.reportportal.core.log.impl;
 
-import com.epam.ta.reportportal.binary.DataStoreService;
+import com.epam.ta.reportportal.binary.AttachmentBinaryDataService;
 import com.epam.ta.reportportal.commons.ReportPortalUser;
+import com.epam.ta.reportportal.core.item.TestItemService;
 import com.epam.ta.reportportal.core.log.DeleteLogHandler;
 import com.epam.ta.reportportal.dao.LogRepository;
 import com.epam.ta.reportportal.dao.ProjectRepository;
@@ -30,7 +31,7 @@ import com.epam.ta.reportportal.entity.user.UserRole;
 import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.model.ErrorType;
 import com.epam.ta.reportportal.ws.model.OperationCompletionRS;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -56,15 +57,19 @@ public class DeleteLogHandlerImpl implements DeleteLogHandler {
 
 	private final LogRepository logRepository;
 
-	private final DataStoreService dataStoreService;
+	private final AttachmentBinaryDataService attachmentBinaryDataService;
 
 	private final ProjectRepository projectRepository;
 
+	private final TestItemService testItemService;
+
 	@Autowired
-	public DeleteLogHandlerImpl(LogRepository logRepository, DataStoreService dataStoreService, ProjectRepository projectRepository) {
+	public DeleteLogHandlerImpl(LogRepository logRepository, AttachmentBinaryDataService attachmentBinaryDataService,
+			ProjectRepository projectRepository, TestItemService testItemService) {
 		this.logRepository = logRepository;
-		this.dataStoreService = dataStoreService;
+		this.attachmentBinaryDataService = attachmentBinaryDataService;
 		this.projectRepository = projectRepository;
+		this.testItemService = testItemService;
 	}
 
 	@Override
@@ -89,10 +94,10 @@ public class DeleteLogHandlerImpl implements DeleteLogHandler {
 	private void cleanUpLogData(Log log) {
 		ofNullable(log.getAttachment()).ifPresent(a -> {
 			if (StringUtils.isNotBlank(a.getFileId())) {
-				dataStoreService.delete(a.getFileId());
+				attachmentBinaryDataService.delete(a.getFileId());
 			}
 			if (StringUtils.isNotBlank(a.getThumbnailId())) {
-				dataStoreService.delete(a.getThumbnailId());
+				attachmentBinaryDataService.delete(a.getThumbnailId());
 			}
 		});
 
@@ -110,16 +115,15 @@ public class DeleteLogHandlerImpl implements DeleteLogHandler {
 		Log log = logRepository.findById(logId).orElseThrow(() -> new ReportPortalException(ErrorType.LOG_NOT_FOUND, logId));
 
 		Optional<TestItem> itemOptional = ofNullable(log.getTestItem());
-		Launch launch = ofNullable(log.getTestItem()).map(TestItem::getLaunch).orElseGet(log::getLaunch);
+		Launch launch = ofNullable(log.getTestItem()).map(testItemService::getEffectiveLaunch).orElseGet(log::getLaunch);
 
 		//TODO check if statistics is right in item results
 		if (itemOptional.isPresent()) {
-			expect(itemOptional.get().getItemResults().getStatistics(), notNull()).verify(TEST_ITEM_IS_NOT_FINISHED,
-					formattedSupplier("Unable to delete log '{}' when test item '{}' in progress state",
-							log.getId(),
-							itemOptional.get().getItemId()
-					)
-			);
+			expect(itemOptional.get().getItemResults().getStatistics(), notNull()).verify(TEST_ITEM_IS_NOT_FINISHED, formattedSupplier(
+					"Unable to delete log '{}' when test item '{}' in progress state",
+					log.getId(),
+					itemOptional.get().getItemId()
+			));
 		} else {
 			expect(launch.getStatus(), not(statusIn(StatusEnum.IN_PROGRESS))).verify(LAUNCH_IS_NOT_FINISHED,
 					formattedSupplier("Unable to delete log '{}' when launch '{}' in progress state", log.getId(), launch.getId())
@@ -130,7 +134,7 @@ public class DeleteLogHandlerImpl implements DeleteLogHandler {
 				formattedSupplier("Log '{}' not under specified '{}' project", logId, projectDetails.getProjectId())
 		);
 
-		if (user.getUserRole() != UserRole.ADMINISTRATOR && !Objects.equals(user.getUsername(), launch.getUser().getLogin())) {
+		if (user.getUserRole() != UserRole.ADMINISTRATOR && !Objects.equals(user.getUserId(), launch.getUserId())) {
 			/*
 			 * Only PROJECT_MANAGER roles could delete logs
 			 */

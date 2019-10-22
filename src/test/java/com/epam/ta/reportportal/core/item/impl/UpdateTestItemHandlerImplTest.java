@@ -17,10 +17,15 @@
 package com.epam.ta.reportportal.core.item.impl;
 
 import com.epam.ta.reportportal.commons.ReportPortalUser;
+import com.epam.ta.reportportal.core.item.impl.status.StatusChangingStrategy;
+import com.epam.ta.reportportal.dao.LaunchRepository;
 import com.epam.ta.reportportal.dao.ProjectRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
+import com.epam.ta.reportportal.entity.ItemAttribute;
+import com.epam.ta.reportportal.entity.enums.StatusEnum;
 import com.epam.ta.reportportal.entity.enums.TestItemTypeEnum;
 import com.epam.ta.reportportal.entity.item.TestItem;
+import com.epam.ta.reportportal.entity.item.TestItemResults;
 import com.epam.ta.reportportal.entity.launch.Launch;
 import com.epam.ta.reportportal.entity.project.ProjectRole;
 import com.epam.ta.reportportal.entity.user.User;
@@ -33,14 +38,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import rp.com.google.common.collect.Sets;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static com.epam.ta.reportportal.ReportPortalUserUtil.getRpUser;
+import static com.epam.ta.reportportal.core.item.impl.UpdateTestItemHandlerImpl.INITIAL_STATUS_ATTRIBUTE_KEY;
 import static com.epam.ta.reportportal.util.ProjectExtractor.extractProjectDetails;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.*;
 
 /**
  * @author <a href="mailto:ihar_kahadouski@epam.com">Ihar Kahadouski</a>
@@ -48,11 +57,19 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UpdateTestItemHandlerImplTest {
 
+	private final StatusChangingStrategy statusChangingStrategy = mock(StatusChangingStrategy.class);
+
+	@Mock
+	private Map<StatusEnum, StatusChangingStrategy> statusChangingStrategyMapping;
+
 	@Mock
 	private TestItemRepository itemRepository;
 
 	@Mock
 	private ProjectRepository projectRepository;
+
+	@Mock
+	private LaunchRepository launchRepository;
 
 	@InjectMocks
 	private UpdateTestItemHandlerImpl handler;
@@ -71,12 +88,15 @@ class UpdateTestItemHandlerImplTest {
 	void updateTestItemUnderNotExistedLaunch() {
 		final ReportPortalUser rpUser = getRpUser("test", UserRole.USER, ProjectRole.PROJECT_MANAGER, 1L);
 
-		when(itemRepository.findById(1L)).thenReturn(Optional.of(new TestItem()));
+		TestItem testItem = new TestItem();
+		testItem.setLaunchId(2L);
+		when(itemRepository.findById(1L)).thenReturn(Optional.of(testItem));
+		when(launchRepository.findById(any(Long.class))).thenReturn(Optional.empty());
 
 		final ReportPortalException exception = assertThrows(ReportPortalException.class,
 				() -> handler.updateTestItem(extractProjectDetails(rpUser, "test_project"), 1L, new UpdateTestItemRQ(), rpUser)
 		);
-		assertEquals("Launch '' not found. Did you use correct Launch ID?", exception.getMessage());
+		assertEquals("Launch '2' not found. Did you use correct Launch ID?", exception.getMessage());
 	}
 
 	@Test
@@ -85,11 +105,14 @@ class UpdateTestItemHandlerImplTest {
 
 		TestItem item = new TestItem();
 		Launch launch = new Launch();
+		launch.setId(1L);
 		User user = new User();
+		user.setId(1L);
 		user.setLogin("owner");
-		launch.setUser(user);
+		launch.setUserId(2L);
 		launch.setProjectId(1L);
-		item.setLaunch(launch);
+		item.setLaunchId(launch.getId());
+		when(launchRepository.findById(anyLong())).thenReturn(Optional.of(launch));
 		when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
 
 		final ReportPortalException exception = assertThrows(ReportPortalException.class,
@@ -103,11 +126,14 @@ class UpdateTestItemHandlerImplTest {
 		final ReportPortalUser rpUser = getRpUser("test", UserRole.USER, ProjectRole.MEMBER, 1L);
 		TestItem item = new TestItem();
 		Launch launch = new Launch();
+		launch.setId(1L);
 		User user = new User();
-		user.setLogin("test");
-		launch.setUser(user);
+		user.setId(1L);
+		user.setLogin("owner");
+		launch.setUserId(user.getId());
 		launch.setProjectId(2L);
-		item.setLaunch(launch);
+		item.setLaunchId(launch.getId());
+		when(launchRepository.findById(anyLong())).thenReturn(Optional.of(launch));
 		when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
 
 		final ReportPortalException exception = assertThrows(ReportPortalException.class,
@@ -122,8 +148,7 @@ class UpdateTestItemHandlerImplTest {
 
 		when(projectRepository.findById(1L)).thenReturn(Optional.empty());
 
-		ReportPortalException exception = assertThrows(
-				ReportPortalException.class,
+		ReportPortalException exception = assertThrows(ReportPortalException.class,
 				() -> handler.defineTestItemsIssues(extractProjectDetails(rpUser, "test_project"), new DefineIssueRQ(), rpUser)
 		);
 
@@ -144,13 +169,77 @@ class UpdateTestItemHandlerImplTest {
 		item.setType(TestItemTypeEnum.TEST);
 		Launch launch = new Launch();
 		launch.setId(2L);
-		item.setLaunch(launch);
+		item.setLaunchId(launch.getId());
 
+		when(launchRepository.findById(anyLong())).thenReturn(Optional.of(launch));
 		when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
 
 		ReportPortalException exception = assertThrows(ReportPortalException.class,
 				() -> handler.updateTestItem(extractProjectDetails(user, "test_project"), itemId, rq, user)
 		);
 		assertEquals("Incorrect Request. Unable to change status on test item with children", exception.getMessage());
+	}
+
+	@Test
+	void shouldCreateInitialStatusAttribute() {
+		ReportPortalUser user = getRpUser("user", UserRole.ADMINISTRATOR, ProjectRole.PROJECT_MANAGER, 1L);
+
+		UpdateTestItemRQ rq = new UpdateTestItemRQ();
+		rq.setStatus("PASSED");
+
+		long itemId = 1L;
+		TestItem item = new TestItem();
+		item.setItemId(itemId);
+		item.setHasChildren(false);
+		item.setType(TestItemTypeEnum.STEP);
+		TestItemResults itemResults = new TestItemResults();
+		itemResults.setStatus(StatusEnum.FAILED);
+		item.setItemResults(itemResults);
+		Launch launch = new Launch();
+		launch.setId(2L);
+		item.setLaunchId(launch.getId());
+
+		when(launchRepository.findById(anyLong())).thenReturn(Optional.of(launch));
+		when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+		when(statusChangingStrategyMapping.get(item.getItemResults().getStatus())).thenReturn(statusChangingStrategy);
+		doNothing().when(statusChangingStrategy).changeStatus(item, StatusEnum.PASSED, user, 1L);
+
+		handler.updateTestItem(extractProjectDetails(user, "test_project"), itemId, rq, user);
+		assertTrue(item.getAttributes()
+				.stream()
+				.anyMatch(attribute -> INITIAL_STATUS_ATTRIBUTE_KEY.equalsIgnoreCase(attribute.getKey())
+						&& StatusEnum.FAILED.getExecutionCounterField().equalsIgnoreCase("failed")));
+	}
+
+	@Test
+	void shouldNotCreateInitialStatusAttribute() {
+		ReportPortalUser user = getRpUser("user", UserRole.ADMINISTRATOR, ProjectRole.PROJECT_MANAGER, 1L);
+
+		UpdateTestItemRQ rq = new UpdateTestItemRQ();
+		rq.setStatus("PASSED");
+
+		long itemId = 1L;
+		TestItem item = new TestItem();
+		item.setItemId(itemId);
+		item.setHasChildren(false);
+		item.setType(TestItemTypeEnum.STEP);
+		item.setAttributes(Sets.newHashSet(new ItemAttribute(INITIAL_STATUS_ATTRIBUTE_KEY, "passed", true)));
+		TestItemResults itemResults = new TestItemResults();
+		itemResults.setStatus(StatusEnum.FAILED);
+		item.setItemResults(itemResults);
+		Launch launch = new Launch();
+		launch.setId(2L);
+		item.setLaunchId(launch.getId());
+
+		when(launchRepository.findById(anyLong())).thenReturn(Optional.of(launch));
+		when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+		when(statusChangingStrategyMapping.get(item.getItemResults().getStatus())).thenReturn(statusChangingStrategy);
+		doNothing().when(statusChangingStrategy).changeStatus(item, StatusEnum.PASSED, user, 1L);
+
+		handler.updateTestItem(extractProjectDetails(user, "test_project"), itemId, rq, user);
+		assertTrue(item.getAttributes()
+				.stream()
+				.anyMatch(attribute -> INITIAL_STATUS_ATTRIBUTE_KEY.equalsIgnoreCase(attribute.getKey())
+						&& StatusEnum.PASSED.getExecutionCounterField().equalsIgnoreCase("passed")));
 	}
 }

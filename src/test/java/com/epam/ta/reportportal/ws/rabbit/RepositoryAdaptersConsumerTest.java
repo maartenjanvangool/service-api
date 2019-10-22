@@ -29,8 +29,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.ByteArrayInputStream;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -97,14 +95,5 @@ class RepositoryAdaptersConsumerTest {
 		List<LogResource> resources = repositoryAdaptersConsumer.findLogsByTestItem(itemRef, limit, false);
 
 		assertEquals(resources.size(), 2);
-	}
-
-	@Test
-	void load() {
-		String id = "id";
-		ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream("data".getBytes(Charset.forName("UTF8")));
-		when(dataStoreService.load(id)).thenReturn(byteArrayInputStream);
-
-		assertEquals(byteArrayInputStream, repositoryAdaptersConsumer.fetchData(id));
 	}
 }

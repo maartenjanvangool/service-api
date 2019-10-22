@@ -20,6 +20,7 @@ import com.epam.ta.reportportal.commons.querygen.*;
 import com.epam.ta.reportportal.commons.validation.Suppliers;
 import com.epam.ta.reportportal.core.activity.ActivityHandler;
 import com.epam.ta.reportportal.dao.ActivityRepository;
+import com.epam.ta.reportportal.dao.LaunchRepository;
 import com.epam.ta.reportportal.dao.ProjectRepository;
 import com.epam.ta.reportportal.dao.TestItemRepository;
 import com.epam.ta.reportportal.entity.activity.Activity;
@@ -30,6 +31,7 @@ import com.epam.ta.reportportal.exception.ReportPortalException;
 import com.epam.ta.reportportal.ws.converter.PagedResourcesAssembler;
 import com.epam.ta.reportportal.ws.converter.converters.ActivityConverter;
 import com.epam.ta.reportportal.ws.model.ActivityResource;
+import com.epam.ta.reportportal.ws.model.ErrorType;
 import org.jooq.Operator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -45,8 +47,7 @@ import java.util.stream.Stream;
 import static com.epam.ta.reportportal.commons.querygen.constant.ActivityCriteriaConstant.*;
 import static com.epam.ta.reportportal.commons.querygen.constant.GeneralCriteriaConstant.CRITERIA_PROJECT_ID;
 import static com.epam.ta.reportportal.commons.validation.BusinessRule.expect;
-import static com.epam.ta.reportportal.entity.activity.Activity.ActivityEntityType.ITEM_ISSUE;
-import static com.epam.ta.reportportal.entity.activity.Activity.ActivityEntityType.TICKET;
+import static com.epam.ta.reportportal.entity.activity.Activity.ActivityEntityType.*;
 import static com.epam.ta.reportportal.ws.model.ErrorType.*;
 
 /**
@@ -57,13 +58,15 @@ public class ActivityHandlerImpl implements ActivityHandler {
 
 	private final ActivityRepository activityRepository;
 	private final TestItemRepository testItemRepository;
+	private final LaunchRepository launchRepository;
 	private final ProjectRepository projectRepository;
 
 	@Autowired
 	public ActivityHandlerImpl(ActivityRepository activityRepository, TestItemRepository testItemRepository,
-			ProjectRepository projectRepository) {
+			LaunchRepository launchRepository, ProjectRepository projectRepository) {
 		this.activityRepository = activityRepository;
 		this.testItemRepository = testItemRepository;
+		this.launchRepository = launchRepository;
 		this.projectRepository = projectRepository;
 	}
 
@@ -100,7 +103,8 @@ public class ActivityHandlerImpl implements ActivityHandler {
 	public Iterable<ActivityResource> getItemActivities(ReportPortalUser.ProjectDetails projectDetails, Long itemId, Filter filter,
 			Pageable pageable) {
 		TestItem testItem = testItemRepository.findById(itemId).orElseThrow(() -> new ReportPortalException(TEST_ITEM_NOT_FOUND, itemId));
-		Launch launch = testItem.getLaunch();
+		Launch launch = launchRepository.findById(testItem.getLaunchId())
+				.orElseThrow(() -> new ReportPortalException(ErrorType.LAUNCH_NOT_FOUND, testItem.getLaunchId()));
 		expect(projectDetails.getProjectId(), Predicate.isEqual(launch.getProjectId())).verify(ACCESS_DENIED,
 				Suppliers.formattedSupplier("Test item with id '{}' is not under project with id '{}'",
 						itemId,
@@ -117,8 +121,7 @@ public class ActivityHandlerImpl implements ActivityHandler {
 		filter.withCondition(FilterCondition.builder().eq(CRITERIA_OBJECT_ID, String.valueOf(itemId)).build())
 				.withCondition(FilterCondition.builder()
 						.withSearchCriteria(CRITERIA_ENTITY)
-						.withCondition(Condition.IN)
-						.withValue(Stream.of(ITEM_ISSUE, TICKET)
+						.withCondition(Condition.IN).withValue(Stream.of(ITEM, ITEM_ISSUE, TICKET)
 								.map(Activity.ActivityEntityType::getValue)
 								.collect(Collectors.joining(",")))
 						.build());

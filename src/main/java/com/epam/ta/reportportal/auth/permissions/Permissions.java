@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 EPAM Systems
+ * Copyright 2019 EPAM Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,8 @@ public final class Permissions {
 	public static final String PROJECT_MANAGER_OR_ADMIN =
 			"hasPermission(#projectName.toLowerCase(), 'projectManagerPermission')" + "||" + ADMIN_ONLY;
 
-	public static final String CAN_ADMINISTRATE_OBJECT = "hasPermission(returnObject, 'aclFullPermission') || hasRole('ADMINISTRATOR')";
+	public static final String CAN_ADMINISTRATE_OBJECT = "hasPermission(returnObject, 'aclFullPermission') || hasRole('ADMINISTRATOR') "
+			+ "|| hasPermission(#projectDetails.getProjectName().toLowerCase(), 'projectManagerPermission')";
 
 	public static final String CAN_READ_OBJECT = "hasPermission(returnObject, 'aclReadPermission')" + " || " + CAN_ADMINISTRATE_OBJECT;
 

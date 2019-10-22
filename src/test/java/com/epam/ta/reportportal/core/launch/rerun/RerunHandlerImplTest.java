@@ -42,6 +42,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -66,6 +67,9 @@ class RerunHandlerImplTest {
 
 	@Mock
 	private MessageBus messageBus;
+
+	@Mock
+	private ApplicationEventPublisher eventPublisher;
 
 	@InjectMocks
 	private RerunHandlerImpl rerunHandler;
@@ -125,14 +129,13 @@ class RerunHandlerImplTest {
 		verify(messageBus, times(1)).publishActivity(any(LaunchStartedEvent.class));
 		assertNotNull(response.getNumber());
 		assertNotNull(response.getId());
-		assertNotNull(response.getUuid());
 
 	}
 
 	@Test
 	void returnEmptyOptionalWhenRootItemNotFound() {
 		StartTestItemRQ request = new StartTestItemRQ();
-		request.setLaunchId("launch_uuid");
+		request.setLaunchUuid("launch_uuid");
 		request.setType("STEP");
 		String itemName = "name";
 		request.setName(itemName);
@@ -148,7 +151,7 @@ class RerunHandlerImplTest {
 	@Test
 	void happyRerunRootItem() {
 		StartTestItemRQ request = new StartTestItemRQ();
-		request.setLaunchId("launch_uuid");
+		request.setLaunchUuid("launch_uuid");
 		request.setType("STEP");
 		String itemName = "name";
 		request.setName(itemName);
@@ -166,7 +169,7 @@ class RerunHandlerImplTest {
 	@Test
 	void returnEmptyOptionalWhenChildItemNotFound() {
 		StartTestItemRQ request = new StartTestItemRQ();
-		request.setLaunchId("launch_uuid");
+		request.setLaunchUuid("launch_uuid");
 		request.setType("STEP");
 		String itemName = "name";
 		request.setName(itemName);
@@ -184,7 +187,7 @@ class RerunHandlerImplTest {
 	@Test
 	void happyRerunChildItem() {
 		StartTestItemRQ request = new StartTestItemRQ();
-		request.setLaunchId("launch_uuid");
+		request.setLaunchUuid("launch_uuid");
 		request.setType("STEP");
 		String itemName = "name";
 		request.setName(itemName);
@@ -205,7 +208,7 @@ class RerunHandlerImplTest {
 		TestItem item = new TestItem();
 		item.setItemId(1L);
 		item.setName(name);
-		item.setLaunch(launch);
+		item.setLaunchId(launch.getId());
 		item.setDescription("desc");
 		item.setType(TestItemTypeEnum.STEP);
 		TestItemResults itemResults = new TestItemResults();
